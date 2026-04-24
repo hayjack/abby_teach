@@ -1,0 +1,226 @@
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from models import ClassRecord, AttendanceRecord, Student, Class, Course, User, StudentCourse, LeaveRecord
+from extensions import db
+from datetime import date, time, datetime
+from utils import parse_date
+from permissions import can_manage_any_teacher, can_manage_class
+from leave_sync import sync_leave_on_record_creation
+
+def parse_time(time_str):
+    """Parse time from frontend (handles both 'HH:MM:SS' and full datetime strings like '2026-04-24T07:00:27.000Z')"""
+    if not time_str:
+        return None
+    # If it's a full datetime, extract just the time part
+    if 'T' in str(time_str):
+        dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+        return dt.time()
+    return time.fromisoformat(time_str)
+
+class_record_bp = Blueprint('class_record', __name__)
+
+@class_record_bp.route('/', methods=['GET'])
+@jwt_required()
+def get_class_records():
+    class_id = request.args.get('class_id')
+    teacher_id = request.args.get('teacher_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    query = ClassRecord.query
+    
+    if class_id:
+        query = query.filter_by(class_id=class_id)
+    if teacher_id:
+        query = query.filter_by(teacher_id=teacher_id)
+    if start_date:
+        query = query.filter(ClassRecord.class_date >= parse_date(start_date))
+    if end_date:
+        query = query.filter(ClassRecord.class_date <= parse_date(end_date))
+    
+    records = query.all()
+    return jsonify([{
+        'id': record.id,
+        'class_id': record.class_id,
+        'class_name': record.class_.name,
+        'course_id': record.course_id,
+        'course_name': record.course.name,
+        'teacher_id': record.teacher_id,
+        'teacher_name': record.teacher.name,
+        'class_date': record.class_date.isoformat(),
+        'start_time': record.start_time.isoformat(),
+        'end_time': record.end_time.isoformat(),
+        'hours': float(record.hours),
+        'content': record.content
+    } for record in records])
+
+@class_record_bp.route('/<int:id>', methods=['GET'])
+@jwt_required()
+def get_class_record(id):
+    record = ClassRecord.query.get(id)
+    if not record:
+        return jsonify({'message': '上课记录不存在'}), 404
+    
+    # 获取考勤记录
+    attendances = []
+    for attendance in record.attendance_records:
+        attendances.append({
+            'student_id': attendance.student_id,
+            'student_name': attendance.student.name,
+            'status': attendance.status
+        })
+    
+    return jsonify({
+        'id': record.id,
+        'class_id': record.class_id,
+        'class_name': record.class_.name,
+        'course_id': record.course_id,
+        'course_name': record.course.name,
+        'teacher_id': record.teacher_id,
+        'teacher_name': record.teacher.name,
+        'class_date': record.class_date.isoformat(),
+        'start_time': record.start_time.isoformat(),
+        'end_time': record.end_time.isoformat(),
+        'hours': float(record.hours),
+        'content': record.content,
+        'attendances': attendances
+    })
+
+@class_record_bp.route('/', methods=['POST'])
+@jwt_required()
+def create_class_record():
+    data = request.get_json()
+    class_id = data.get('class_id')
+    course_id = data.get('course_id')
+    class_date = data.get('class_date')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    hours = data.get('hours')
+    content = data.get('content')
+    
+    # 检查班级是否存在
+    class_ = Class.query.get(class_id)
+    if not class_:
+        return jsonify({'message': '班级不存在'}), 404
+    
+    # 权限检查：获取当前用户
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    if not current_user:
+        return jsonify({'message': '用户不存在'}), 404
+    
+    # 检查用户是否有权限录入该班级的上课记录
+    if not can_manage_class(current_user, class_):
+        return jsonify({'message': '权限不足，无法录入该班级的上课记录'}), 403
+    
+    # 获取班级关联的教师（取第一个作为上课教师）
+    class_teachers = class_.class_teachers
+    if not class_teachers:
+        return jsonify({'message': '该班级没有关联教师，请先添加教师到班级'}), 400
+    teacher_id = class_teachers[0].teacher_id
+    
+    # 高权限角色可以选择任何教师，普通教师只能选择自己
+    if not can_manage_any_teacher(current_user):
+        # 普通教师角色只能录入自己绑定的班级
+        if current_user.id != teacher_id:
+            return jsonify({'message': '权限不足，普通教师只能录入自己绑定的班级'}), 403
+    
+    # 检查课程是否存在
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({'message': '课程不存在'}), 404
+    
+    # 检查教师是否存在
+    teacher = User.query.get(teacher_id)
+    if not teacher:
+        return jsonify({'message': '教师不存在'}), 404
+    
+    # Parse class_date
+    parsed_class_date = parse_date(class_date)
+    
+    # 创建上课记录
+    new_record = ClassRecord(
+        class_id=class_id,
+        course_id=course_id,
+        teacher_id=teacher_id,
+        class_date=parsed_class_date,
+        start_time=parse_time(start_time),
+        end_time=parse_time(end_time),
+        hours=hours,
+        content=content
+    )
+    
+    db.session.add(new_record)
+    db.session.flush()  # 获取记录ID
+    
+    # 使用同步函数创建考勤记录（自动检查请假状态）
+    sync_leave_on_record_creation(new_record)
+    
+    db.session.commit()
+    return jsonify({'message': '上课记录创建成功', 'id': new_record.id}), 201
+
+@class_record_bp.route('/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_class_record(id):
+    record = ClassRecord.query.get(id)
+    if not record:
+        return jsonify({'message': '上课记录不存在'}), 404
+    
+    data = request.get_json()
+    record.content = data.get('content', record.content)
+    
+    # 更新考勤记录
+    if 'attendances' in data:
+        for attendance_data in data['attendances']:
+            attendance = AttendanceRecord.query.filter_by(
+                class_record_id=id,
+                student_id=attendance_data['student_id']
+            ).first()
+            if attendance:
+                old_status = attendance.status
+                new_status = attendance_data['status']
+                attendance.status = new_status
+                
+                # 如果状态从请假变为出勤，扣除课时
+                if old_status == '请假' and new_status == '出勤':
+                    student_course = StudentCourse.query.filter_by(
+                        student_id=attendance_data['student_id'],
+                        course_id=record.course_id
+                    ).first()
+                    if student_course and student_course.remaining_hours > 0:
+                        student_course.remaining_hours -= record.hours
+                # 如果状态从出勤变为请假，恢复课时
+                elif old_status == '出勤' and new_status == '请假':
+                    student_course = StudentCourse.query.filter_by(
+                        student_id=attendance_data['student_id'],
+                        course_id=record.course_id
+                    ).first()
+                    if student_course:
+                        student_course.remaining_hours += record.hours
+    
+    db.session.commit()
+    return jsonify({'message': '上课记录更新成功'})
+
+@class_record_bp.route('/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_class_record(id):
+    record = ClassRecord.query.get(id)
+    if not record:
+        return jsonify({'message': '上课记录不存在'}), 404
+    
+    # 恢复学生课时
+    for attendance in record.attendance_records:
+        if attendance.status == '出勤':
+            student_course = StudentCourse.query.filter_by(
+                student_id=attendance.student_id,
+                course_id=record.course_id
+            ).first()
+            if student_course:
+                student_course.remaining_hours += record.hours
+    
+    # 删除考勤记录
+    AttendanceRecord.query.filter_by(class_record_id=id).delete()
+    # 删除上课记录
+    db.session.delete(record)
+    db.session.commit()
+    return jsonify({'message': '上课记录删除成功'})
