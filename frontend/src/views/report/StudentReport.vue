@@ -84,7 +84,7 @@ const fetchData = async () => {
     stats.value = res1.data
     hoursData.value = res2.data
   } catch (error) {
-    ElMessage.error('获取统计数据失败')
+    ElMessage.error(error.response?.data?.message || '获取统计数据失败')
   } finally {
     loading.value = false
   }

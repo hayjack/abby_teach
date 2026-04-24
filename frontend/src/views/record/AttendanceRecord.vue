@@ -67,7 +67,7 @@ const fetchData = async () => {
     const response = await api.get('/reports/student_attendance', { params })
     stats.value = response.data
   } catch (error) {
-    ElMessage.error('获取统计数据失败')
+    ElMessage.error(error.response?.data?.message || '获取统计数据失败')
   } finally {
     loading.value = false
   }

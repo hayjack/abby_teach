@@ -6,6 +6,9 @@ from datetime import date, time, datetime
 from utils import parse_date
 from permissions import can_manage_any_teacher, can_manage_class
 from leave_sync import sync_leave_on_record_creation
+import logging
+
+logger = logging.getLogger(__name__)
 
 def parse_time(time_str):
     """Parse time from frontend (handles both 'HH:MM:SS' and full datetime strings like '2026-04-24T07:00:27.000Z')"""
@@ -26,6 +29,13 @@ def get_class_records():
     teacher_id = request.args.get('teacher_id')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    
+    # 日期范围校验
+    if start_date and end_date:
+        parsed_start = parse_date(start_date)
+        parsed_end = parse_date(end_date)
+        if parsed_start and parsed_end and parsed_end < parsed_start:
+            return jsonify({'message': '结束日期不能小于开始日期'}), 400
     
     query = ClassRecord.query
     
@@ -98,9 +108,12 @@ def create_class_record():
     hours = data.get('hours')
     content = data.get('content')
     
+    logger.info(f'[上课记录] 创建请求: class_id={class_id}, course_id={course_id}, date={class_date}, hours={hours}')
+    
     # 检查班级是否存在
     class_ = Class.query.get(class_id)
     if not class_:
+        logger.error(f'[上课记录] 班级ID={class_id} 不存在')
         return jsonify({'message': '班级不存在'}), 404
     
     # 权限检查：获取当前用户
@@ -109,8 +122,11 @@ def create_class_record():
     if not current_user:
         return jsonify({'message': '用户不存在'}), 404
     
+    logger.info(f'[上课记录] 当前用户: {current_user.name}(ID={current_user.id})')
+    
     # 检查用户是否有权限录入该班级的上课记录
     if not can_manage_class(current_user, class_):
+        logger.warning(f'[上课记录] 权限不足: 用户={current_user.name}, 班级={class_.name}')
         return jsonify({'message': '权限不足，无法录入该班级的上课记录'}), 403
     
     # 获取班级关联的教师（取第一个作为上课教师）
@@ -119,10 +135,13 @@ def create_class_record():
         return jsonify({'message': '该班级没有关联教师，请先添加教师到班级'}), 400
     teacher_id = class_teachers[0].teacher_id
     
+    logger.info(f'[上课记录] 班级教师: {class_teachers[0].teacher.name}(ID={teacher_id})')
+    
     # 高权限角色可以选择任何教师，普通教师只能选择自己
     if not can_manage_any_teacher(current_user):
         # 普通教师角色只能录入自己绑定的班级
         if current_user.id != teacher_id:
+            logger.warning(f'[上课记录] 普通教师权限不足: 用户={current_user.name}, 班级教师={teacher_id}')
             return jsonify({'message': '权限不足，普通教师只能录入自己绑定的班级'}), 403
     
     # 检查课程是否存在
@@ -153,10 +172,13 @@ def create_class_record():
     db.session.add(new_record)
     db.session.flush()  # 获取记录ID
     
+    logger.info(f'[上课记录] 记录创建成功: record_id={new_record.id}')
+    
     # 使用同步函数创建考勤记录（自动检查请假状态）
     sync_leave_on_record_creation(new_record)
     
     db.session.commit()
+    logger.info(f'[上课记录] 考勤记录处理完成')
     return jsonify({'message': '上课记录创建成功', 'id': new_record.id}), 201
 
 @class_record_bp.route('/<int:id>', methods=['PUT'])

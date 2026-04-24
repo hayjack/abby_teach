@@ -58,7 +58,7 @@ const fetchClasses = async () => {
     const response = await api.get('/classes')
     classList.value = response.data
   } catch (error) {
-    ElMessage.error('获取班级列表失败')
+    ElMessage.error(error.response?.data?.message || '获取班级列表失败')
   } finally {
     loading.value = false
   }
@@ -105,7 +105,7 @@ const removeTeacher = async (teacherId) => {
     ElMessage.success('移除成功')
     showTeachers(currentClass.value)
   } catch (error) {
-    ElMessage.error('移除失败')
+    ElMessage.error(error.response?.data?.message || '移除失败')
   }
 }
 

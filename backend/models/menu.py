@@ -1,5 +1,6 @@
-from extensions import db
+﻿from extensions import db
 from datetime import datetime
+from utils import now_local
 
 class Menu(db.Model):
     __tablename__ = 'menus'
@@ -10,8 +11,8 @@ class Menu(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('menus.id'))
     icon = db.Column(db.String(50))
     order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_local)
+    updated_at = db.Column(db.DateTime, default=now_local, onupdate=now_local)
     
     parent = db.relationship('Menu', remote_side=[id], backref=db.backref('children', lazy=True))
 

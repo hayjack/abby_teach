@@ -11,8 +11,16 @@
       <el-table :data="classes" v-loading="loading">
         <el-table-column prop="name" label="班级名称"></el-table-column>
         <el-table-column prop="description" label="描述"></el-table-column>
-        <el-table-column prop="start_date" label="开始日期"></el-table-column>
-        <el-table-column prop="end_date" label="结束日期"></el-table-column>
+        <el-table-column prop="start_date" label="开始日期" width="120">
+          <template #default="{row}">
+            {{ row.start_date || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="end_date" label="结束日期" width="120">
+          <template #default="{row}">
+            {{ row.end_date || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{row}">
             <el-button size="small" @click="handleEdit(row)">编辑</el-button>
@@ -67,7 +75,7 @@ const fetchClasses = async () => {
     const response = await api.get('/classes')
     classes.value = response.data
   } catch (error) {
-    ElMessage.error('获取班级列表失败')
+    ElMessage.error(error.response?.data?.message || '获取班级列表失败')
   } finally {
     loading.value = false
   }
@@ -81,7 +89,13 @@ const handleAdd = () => {
 
 const handleEdit = (row) => {
   dialogTitle.value = '编辑班级'
-  form.value = { ...row }
+  form.value = { 
+    id: row.id,
+    name: row.name || '', 
+    description: row.description || '', 
+    start_date: row.start_date || '', 
+    end_date: row.end_date || '' 
+  }
   dialogVisible.value = true
 }
 
@@ -100,7 +114,7 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchClasses()
       } catch (error) {
-        ElMessage.error('操作失败')
+        ElMessage.error(error.response?.data?.message || '操作失败')
       }
     }
   })
@@ -112,7 +126,7 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功')
     fetchClasses()
   } catch (error) {
-    ElMessage.error('删除失败')
+    ElMessage.error(error.response?.data?.message || '删除失败')
   }
 }
 

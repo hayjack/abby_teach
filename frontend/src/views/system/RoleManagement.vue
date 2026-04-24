@@ -63,7 +63,7 @@ const fetchRoles = async () => {
     const response = await api.get('/roles')
     roles.value = response.data
   } catch (error) {
-    ElMessage.error('获取角色列表失败')
+    ElMessage.error(error.response?.data?.message || '获取角色列表失败')
   } finally {
     loading.value = false
   }
@@ -96,7 +96,7 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchRoles()
       } catch (error) {
-        ElMessage.error('操作失败')
+        ElMessage.error(error.response?.data?.message || '操作失败')
       }
     }
   })
@@ -108,7 +108,7 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功')
     fetchRoles()
   } catch (error) {
-    ElMessage.error('删除失败')
+    ElMessage.error(error.response?.data?.message || '删除失败')
   }
 }
 

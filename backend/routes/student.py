@@ -124,6 +124,15 @@ def add_student_course(id):
     start_date = data.get('start_date')
     end_date = data.get('end_date')
     
+    if not course_id or not total_hours:
+        return jsonify({'message': '课程和总课时为必填项'}), 400
+    
+    parsed_start = parse_date(start_date) if start_date else None
+    parsed_end = parse_date(end_date) if end_date else None
+    
+    if parsed_start and parsed_end and parsed_end < parsed_start:
+        return jsonify({'message': '结束日期不能小于开始日期'}), 400
+    
     course = Course.query.get(course_id)
     if not course:
         return jsonify({'message': '课程不存在'}), 404
@@ -132,16 +141,16 @@ def add_student_course(id):
     if existing:
         existing.total_hours += total_hours
         existing.remaining_hours += total_hours
-        existing.start_date = parse_date(start_date) if start_date else existing.start_date
-        existing.end_date = parse_date(end_date) if end_date else existing.end_date
+        existing.start_date = parsed_start if parsed_start else existing.start_date
+        existing.end_date = parsed_end if parsed_end else existing.end_date
     else:
         new_student_course = StudentCourse(
             student_id=id,
             course_id=course_id,
             total_hours=total_hours,
             remaining_hours=total_hours,
-            start_date=parse_date(start_date),
-            end_date=parse_date(end_date)
+            start_date=parsed_start,
+            end_date=parsed_end
         )
         db.session.add(new_student_course)
     

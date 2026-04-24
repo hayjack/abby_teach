@@ -1,5 +1,6 @@
-from extensions import db
+﻿from extensions import db
 from datetime import datetime
+from utils import now_local
 
 class Student(db.Model):
     __tablename__ = 'students'
@@ -12,5 +13,5 @@ class Student(db.Model):
     parent_name = db.Column(db.String(50), nullable=False)
     parent_phone = db.Column(db.String(20), nullable=False)
     address = db.Column(db.String(200))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_local)
+    updated_at = db.Column(db.DateTime, default=now_local, onupdate=now_local)

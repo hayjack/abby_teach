@@ -86,7 +86,7 @@ const fetchStudentCourses = async () => {
     const response = await api.get('/reports/student-hours')
     studentCourses.value = response.data
   } catch (error) {
-    ElMessage.error('获取课时信息失败')
+    ElMessage.error(error.response?.data?.message || '获取课时信息失败')
   } finally {
     loading.value = false
   }
@@ -125,7 +125,7 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchStudentCourses()
       } catch (error) {
-        ElMessage.error('操作失败')
+        ElMessage.error(error.response?.data?.message || '操作失败')
       }
     }
   })

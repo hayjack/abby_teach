@@ -1,5 +1,6 @@
-from extensions import db
+﻿from extensions import db
 from datetime import datetime
+from utils import now_local
 
 class PaymentRecord(db.Model):
     __tablename__ = 'payment_records'
@@ -10,7 +11,7 @@ class PaymentRecord(db.Model):
     payment_date = db.Column(db.Date, nullable=False)
     payment_type = db.Column(db.String(50), nullable=False)
     remark = db.Column(db.String(200))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_local)
+    updated_at = db.Column(db.DateTime, default=now_local, onupdate=now_local)
     
     student = db.relationship('Student', backref=db.backref('payment_records', lazy=True))

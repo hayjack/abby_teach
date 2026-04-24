@@ -51,7 +51,7 @@ const fetchPending = async () => {
     const response = await api.get('/leaves', { params: { status: '待审批' } })
     pendingLeaves.value = response.data
   } catch (error) {
-    ElMessage.error('获取待审批列表失败')
+    ElMessage.error(error.response?.data?.message || '获取待审批列表失败')
   } finally {
     loading.value = false
   }
@@ -64,7 +64,7 @@ const fetchApproved = async () => {
     const response2 = await api.get('/leaves', { params: { status: '已拒绝' } })
     approvedLeaves.value = [...response.data, ...response2.data]
   } catch (error) {
-    ElMessage.error('获取已审批列表失败')
+    ElMessage.error(error.response?.data?.message || '获取已审批列表失败')
   } finally {
     loading2.value = false
   }
@@ -73,8 +73,9 @@ const fetchApproved = async () => {
 const handleApprove = async (id) => {
   try {
     await ElMessageBox.confirm('确定批准该请假申请？', '确认')
-    await api.put(`/leaves/${id}/approve`)
-    ElMessage.success('已批准')
+    const response = await api.put(`/leaves/${id}/approve`)
+    const msg = response.data?.message || '已批准'
+    ElMessage.success(msg)
     fetchPending()
     fetchApproved()
   } catch (error) {

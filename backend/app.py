@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import timedelta
 from extensions import db, migrate, jwt
+from logging_config import setup_logging
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -20,6 +21,10 @@ db.init_app(app)
 migrate.init_app(app, db)
 jwt.init_app(app)
 
+# 初始化日志系统
+logger = setup_logging(app)
+logger.info('=== 教学课消系统启动 ===')
+
 CORS(app, resources={
     r"/api/*": {
         "origins": "*",
@@ -31,8 +36,7 @@ CORS(app, resources={
 
 @app.before_request
 def log_request_info():
-    auth = request.headers.get('Authorization', 'MISSING!')
-    print(f'[REQUEST] {request.method} {request.path} | Auth={auth[:50] if auth != "MISSING!" and len(auth) > 50 else auth} | Origin={request.headers.get("Origin", "-")}')
+    logger.info(f'{request.method} {request.path}')
 
 # 注册蓝图
 from routes.auth import auth_bp
@@ -64,4 +68,5 @@ def test_api():
     return jsonify({'status': 'ok', 'message': 'API is working'})
 
 if __name__ == '__main__':
+    logger.info('启动服务器: http://0.0.0.0:5000')
     app.run(debug=True, host='0.0.0.0', port=5000)

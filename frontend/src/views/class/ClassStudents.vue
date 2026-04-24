@@ -29,7 +29,7 @@
 
       <el-table :data="classStudents">
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
-        <el-table-column prop="join_date" label="加入日期"></el-table-column>
+        <el-table-column prop="joined_date" label="加入日期"></el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{row}">
             <el-button size="small" type="danger" @click="removeStudent(row.student_id)">移除</el-button>
@@ -59,7 +59,7 @@ const fetchClasses = async () => {
     const response = await api.get('/classes')
     classList.value = response.data
   } catch (error) {
-    ElMessage.error('获取班级列表失败')
+    ElMessage.error(error.response?.data?.message || '获取班级列表失败')
   } finally {
     loading.value = false
   }
@@ -106,7 +106,7 @@ const removeStudent = async (studentId) => {
     ElMessage.success('移除成功')
     showStudents(currentClass.value)
   } catch (error) {
-    ElMessage.error('移除失败')
+    ElMessage.error(error.response?.data?.message || '移除失败')
   }
 }
 

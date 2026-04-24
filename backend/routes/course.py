@@ -15,7 +15,8 @@ def get_courses():
         'name': course.name,
         'course_name': course.name,
         'total_hours': float(course.total_hours),
-        'description': course.description
+        'description': course.description,
+        'price': float(course.price) if course.price else None
     } for course in courses])
 
 @course_bp.route('/<int:id>', methods=['GET'])
@@ -30,7 +31,8 @@ def get_course(id):
         'name': course.name,
         'course_name': course.name,
         'total_hours': float(course.total_hours),
-        'description': course.description
+        'description': course.description,
+        'price': float(course.price) if course.price else None
     })
 
 @course_bp.route('/', methods=['POST'])
@@ -40,8 +42,9 @@ def create_course():
     name = data.get('name')
     total_hours = data.get('total_hours', 0)
     description = data.get('description')
+    price = data.get('price')
     
-    new_course = Course(name=name, total_hours=total_hours, description=description)
+    new_course = Course(name=name, total_hours=total_hours, description=description, price=price)
     db.session.add(new_course)
     db.session.commit()
     
@@ -55,9 +58,14 @@ def update_course(id):
         return jsonify({'message': '课程不存在'}), 404
     
     data = request.get_json()
-    course.name = data.get('name', course.name)
-    course.total_hours = data.get('total_hours', course.total_hours)
-    course.description = data.get('description', course.description)
+    if 'name' in data:
+        course.name = data['name']
+    if 'total_hours' in data:
+        course.total_hours = data['total_hours']
+    if 'description' in data:
+        course.description = data['description']
+    if 'price' in data:
+        course.price = data['price']
     
     db.session.commit()
     return jsonify({'message': '课程更新成功'})

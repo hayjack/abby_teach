@@ -92,7 +92,7 @@ const fetchLeaves = async () => {
     const response = await api.get('/leaves')
     leaves.value = response.data
   } catch (error) {
-    ElMessage.error('获取请假记录失败')
+    ElMessage.error(error.response?.data?.message || '获取请假记录失败')
   } finally {
     loading.value = false
   }
@@ -131,7 +131,7 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchLeaves()
       } catch (error) {
-        ElMessage.error('操作失败')
+        ElMessage.error(error.response?.data?.message || '操作失败')
       }
     }
   })
@@ -139,11 +139,12 @@ const handleSubmit = async () => {
 
 const handleDelete = async (id) => {
   try {
-    await api.delete(`/leaves/${id}`)
-    ElMessage.success('删除成功')
+    const response = await api.delete(`/leaves/${id}`)
+    const msg = response.data?.message || '删除成功'
+    ElMessage.success(msg)
     fetchLeaves()
   } catch (error) {
-    ElMessage.error('删除失败')
+    ElMessage.error(error.response?.data?.message || '删除失败')
   }
 }
 

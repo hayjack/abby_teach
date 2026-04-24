@@ -116,7 +116,7 @@ const fetchRecords = async () => {
     const response = await api.get('/class_records')
     records.value = response.data
   } catch (error) {
-    ElMessage.error('获取上课记录失败')
+    ElMessage.error(error.response?.data?.message || '获取上课记录失败')
   } finally {
     loading.value = false
   }
@@ -173,7 +173,7 @@ const handleView = async (record) => {
     attendances.value = response.data.attendances || []
     detailVisible.value = true
   } catch (error) {
-    ElMessage.error('获取考勤详情失败')
+    ElMessage.error(error.response?.data?.message || '获取考勤详情失败')
   }
 }
 
@@ -183,7 +183,7 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功（已恢复学生课时）')
     fetchRecords()
   } catch (error) {
-    ElMessage.error('删除失败')
+    ElMessage.error(error.response?.data?.message || '删除失败')
   }
 }
 

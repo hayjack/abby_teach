@@ -92,7 +92,7 @@ const fetchStudents = async () => {
     const response = await api.get('/students')
     students.value = response.data
   } catch (error) {
-    ElMessage.error('获取学生列表失败')
+    ElMessage.error(error.response?.data?.message || '获取学生列表失败')
   } finally {
     loading.value = false
   }
@@ -125,7 +125,7 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchStudents()
       } catch (error) {
-        ElMessage.error('操作失败')
+        ElMessage.error(error.response?.data?.message || '操作失败')
       }
     }
   })
@@ -137,7 +137,7 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功')
     fetchStudents()
   } catch (error) {
-    ElMessage.error('删除失败')
+    ElMessage.error(error.response?.data?.message || '删除失败')
   }
 }
 

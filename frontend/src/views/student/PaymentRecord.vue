@@ -91,7 +91,7 @@ const fetchPayments = async () => {
     const response = await api.get('/payments')
     payments.value = response.data
   } catch (error) {
-    ElMessage.error('获取缴费记录失败')
+    ElMessage.error(error.response?.data?.message || '获取缴费记录失败')
   } finally {
     loading.value = false
   }
@@ -121,7 +121,7 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchPayments()
       } catch (error) {
-        ElMessage.error('操作失败')
+        ElMessage.error(error.response?.data?.message || '操作失败')
       }
     }
   })
@@ -133,7 +133,7 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功')
     fetchPayments()
   } catch (error) {
-    ElMessage.error('删除失败')
+    ElMessage.error(error.response?.data?.message || '删除失败')
   }
 }
 
