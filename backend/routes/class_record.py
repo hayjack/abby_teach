@@ -30,6 +30,10 @@ def get_class_records():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
+    # 分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
     # 日期范围校验
     if start_date and end_date:
         parsed_start = parse_date(start_date)
@@ -48,21 +52,38 @@ def get_class_records():
     if end_date:
         query = query.filter(ClassRecord.class_date <= parse_date(end_date))
     
-    records = query.all()
-    return jsonify([{
-        'id': record.id,
-        'class_id': record.class_id,
-        'class_name': record.class_.name,
-        'course_id': record.course_id,
-        'course_name': record.course.name,
-        'teacher_id': record.teacher_id,
-        'teacher_name': record.teacher.name,
-        'class_date': record.class_date.isoformat(),
-        'start_time': record.start_time.isoformat(),
-        'end_time': record.end_time.isoformat(),
-        'hours': float(record.hours),
-        'content': record.content
-    } for record in records])
+    # 分页查询
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # 构建响应数据
+    records = []
+    for record in pagination.items:
+        records.append({
+            'id': record.id,
+            'class_id': record.class_id,
+            'class_name': record.class_.name,
+            'course_id': record.course_id,
+            'course_name': record.course.name,
+            'teacher_id': record.teacher_id,
+            'teacher_name': record.teacher.name,
+            'class_date': record.class_date.isoformat(),
+            'start_time': record.start_time.isoformat(),
+            'end_time': record.end_time.isoformat(),
+            'hours': float(record.hours),
+            'content': record.content
+        })
+    
+    return jsonify({
+        'items': records,
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pagination.pages
+    })
 
 @class_record_bp.route('/<int:id>', methods=['GET'])
 @jwt_required()
@@ -203,6 +224,20 @@ def update_class_record(id):
                 new_status = attendance_data['status']
                 attendance.status = new_status
                 
+                # 检查学生加入班级的时间
+                from models import ClassStudent
+                class_student = ClassStudent.query.filter_by(
+                    student_id=attendance_data['student_id'],
+                    class_id=record.class_id
+                ).first()
+                
+                join_date = class_student.join_date if class_student else None
+                
+                # 只有学生加入班级时间小于等于上课时间，才执行课时扣减/恢复
+                if join_date and join_date > record.class_date:
+                    logger.info(f'[课时] 跳过学生ID={attendance_data["student_id"]}，加入日期 {join_date} 在上课日期 {record.class_date} 之后')
+                    continue
+                
                 # 如果状态从请假变为出勤，扣除课时
                 if old_status == '请假' and new_status == '出勤':
                     student_course = StudentCourse.query.filter_by(
@@ -233,6 +268,20 @@ def delete_class_record(id):
     # 恢复学生课时
     for attendance in record.attendance_records:
         if attendance.status == '出勤':
+            # 检查学生加入班级的时间
+            from models import ClassStudent
+            class_student = ClassStudent.query.filter_by(
+                student_id=attendance.student_id,
+                class_id=record.class_id
+            ).first()
+            
+            join_date = class_student.join_date if class_student else None
+            
+            # 只有学生加入班级时间小于等于上课时间，才恢复课时
+            if join_date and join_date > record.class_date:
+                logger.info(f'[课时] 跳过学生ID={attendance.student_id}，加入日期 {join_date} 在上课日期 {record.class_date} 之后')
+                continue
+                
             student_course = StudentCourse.query.filter_by(
                 student_id=attendance.student_id,
                 course_id=record.course_id

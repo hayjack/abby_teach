@@ -24,6 +24,23 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :prev-text="'上一页'"
+          :next-text="'下一页'"
+          :page-size-text="'条/页'"
+          :jumper-text="'前往'"
+          :total-text="'共 '"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
@@ -35,7 +52,7 @@
           <el-input v-model="form.description" type="textarea"></el-input>
         </el-form-item>
         <el-form-item label="总课时" prop="total_hours">
-          <el-input-number v-model="form.total_hours" :min="1"></el-input-number>
+          <el-input-number v-model="form.total_hours" :min="0.5" :step="0.5" :precision="1"></el-input-number>
         </el-form-item>
         <el-form-item label="价格">
           <el-input-number v-model="form.price" :min="0" :precision="2"></el-input-number>
@@ -59,6 +76,9 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增课程')
 const formRef = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const form = ref({ name: '', description: '', total_hours: 10, price: null })
 const rules = {
@@ -69,8 +89,14 @@ const rules = {
 const fetchCourses = async () => {
   loading.value = true
   try {
-    const response = await api.get('/courses')
-    courses.value = response.data
+    const response = await api.get('/courses', {
+      params: {
+        page: currentPage.value,
+        per_page: pageSize.value
+      }
+    })
+    courses.value = response.data.items
+    total.value = response.data.total
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取课程列表失败')
   } finally {
@@ -121,5 +147,26 @@ const handleDelete = async (id) => {
   }
 }
 
-onMounted(() => { fetchCourses() })
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchCourses()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  fetchCourses()
+}
+
+onMounted(() => {
+  fetchCourses()
+})
 </script>
+
+<style scoped>
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

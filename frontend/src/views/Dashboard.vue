@@ -3,7 +3,7 @@
     <el-card class="welcome-card">
       <template #header>
         <div class="card-header">
-          <span>欢迎使用教学课消系统</span>
+          <span>欢迎使用教学管理系统</span>
         </div>
       </template>
       <div class="welcome-content">
@@ -77,6 +77,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '../store'
 import { User, FolderOpened, Reading, Calendar } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import api from '../utils/api'
+import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const user = ref({ name: '管理员' })
@@ -90,10 +92,12 @@ const currentDate = computed(() => {
 })
 
 // 统计数据
-const studentCount = ref(120)
-const classCount = ref(15)
-const courseCount = ref(8)
-const classRecordCount = ref(45)
+const studentCount = ref(0)
+const classCount = ref(0)
+const courseCount = ref(0)
+const classRecordCount = ref(0)
+const attendanceStats = ref({ present: 0, leave: 0, absent: 0 })
+const topTeachers = ref([])
 
 // 图表引用
 const attendanceChart = ref(null)
@@ -137,9 +141,9 @@ const initCharts = () => {
           show: false
         },
         data: [
-          { value: 85, name: '出勤' },
-          { value: 10, name: '请假' },
-          { value: 5, name: '旷课' }
+          { value: attendanceStats.value.present, name: '出勤' },
+          { value: attendanceStats.value.leave, name: '请假' },
+          { value: attendanceStats.value.absent, name: '旷课' }
         ]
       }
     ]
@@ -163,7 +167,7 @@ const initCharts = () => {
     xAxis: [
       {
         type: 'category',
-        data: ['张老师', '李老师', '王老师', '赵老师', '钱老师'],
+        data: topTeachers.value.map(teacher => teacher.teacher_name),
         axisTick: {
           alignWithLabel: true
         }
@@ -179,7 +183,7 @@ const initCharts = () => {
         name: '上课次数',
         type: 'bar',
         barWidth: '60%',
-        data: [12, 9, 15, 8, 10]
+        data: topTeachers.value.map(teacher => teacher.class_count)
       }
     ]
   })
@@ -191,16 +195,34 @@ const initCharts = () => {
   })
 }
 
+// 获取统计数据
+const fetchStats = async () => {
+  try {
+    const response = await api.get('/reports/dashboard')
+    const data = response.data
+    
+    studentCount.value = data.student_count
+    classCount.value = data.class_count
+    courseCount.value = data.course_count
+    classRecordCount.value = data.class_record_count
+    attendanceStats.value = data.attendance_stats
+    topTeachers.value = data.top_teachers
+    
+    // 初始化图表
+    initCharts()
+  } catch (error) {
+    ElMessage.error('获取统计数据失败')
+  }
+}
+
 onMounted(() => {
   // 从store获取用户信息
   if (userStore.userInfo) {
     user.value = userStore.userInfo
   }
   
-  // 初始化图表
-  initCharts()
-  
-  // 这里可以添加API调用，获取真实的统计数据
+  // 获取统计数据
+  fetchStats()
 })
 </script>
 

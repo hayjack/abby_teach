@@ -10,17 +10,38 @@ student_bp = Blueprint('student', __name__)
 @student_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_students():
-    students = Student.query.all()
-    return jsonify([{
-        'id': student.id,
-        'name': student.name,
-        'english_name': student.english_name,
-        'gender': student.gender,
-        'birthday': student.birthday.isoformat() if student.birthday else None,
-        'parent_name': student.parent_name,
-        'parent_phone': student.parent_phone,
-        'address': student.address
-    } for student in students])
+    # 分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    # 获取分页数据
+    pagination = Student.query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # 构建响应数据
+    students = []
+    for student in pagination.items:
+        students.append({
+            'id': student.id,
+            'name': student.name,
+            'english_name': student.english_name,
+            'gender': student.gender,
+            'birthday': student.birthday.isoformat() if student.birthday else None,
+            'parent_name': student.parent_name,
+            'parent_phone': student.parent_phone,
+            'address': student.address
+        })
+    
+    return jsonify({
+        'items': students,
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pagination.pages
+    })
 
 @student_bp.route('/<int:id>', methods=['GET'])
 @jwt_required()
@@ -111,48 +132,43 @@ def delete_student(id):
     db.session.commit()
     return jsonify({'message': '学生删除成功'})
 
-@student_bp.route('/<int:id>/courses', methods=['POST'])
+@student_bp.route('/<int:id>/attendance', methods=['GET'])
 @jwt_required()
-def add_student_course(id):
+def get_student_attendance(id):
+    """
+    获取学生的上课记录（考勤记录）
+    """
+    from models import AttendanceRecord, ClassRecord, Course, User, Class, Student
+    
+    # 检查学生是否存在
     student = Student.query.get(id)
     if not student:
         return jsonify({'message': '学生不存在'}), 404
     
-    data = request.get_json()
-    course_id = data.get('course_id')
-    total_hours = data.get('total_hours')
-    start_date = data.get('start_date')
-    end_date = data.get('end_date')
+    # 获取学生的所有考勤记录，按上课日期倒序排序
+    attendances = AttendanceRecord.query.filter_by(student_id=id).join(
+        ClassRecord
+    ).order_by(ClassRecord.class_date.desc()).all()
     
-    if not course_id or not total_hours:
-        return jsonify({'message': '课程和总课时为必填项'}), 400
+    # 构建响应数据
+    result = []
+    for attendance in attendances:
+        class_record = attendance.class_record
+        result.append({
+            'id': attendance.id,
+            'class_record_id': class_record.id,
+            'student_id': student.id,
+            'student_name': student.name,
+            'class_name': class_record.class_.name,
+            'course_name': class_record.course.name,
+            'teacher_name': class_record.teacher.name,
+            'class_date': class_record.class_date.isoformat(),
+            'start_time': class_record.start_time.isoformat(),
+            'end_time': class_record.end_time.isoformat(),
+            'hours': float(class_record.hours),
+            'status': attendance.status,
+            'is_attended': attendance.status == '出勤',
+            'created_at': attendance.created_at.isoformat()
+        })
     
-    parsed_start = parse_date(start_date) if start_date else None
-    parsed_end = parse_date(end_date) if end_date else None
-    
-    if parsed_start and parsed_end and parsed_end < parsed_start:
-        return jsonify({'message': '结束日期不能小于开始日期'}), 400
-    
-    course = Course.query.get(course_id)
-    if not course:
-        return jsonify({'message': '课程不存在'}), 404
-    
-    existing = StudentCourse.query.filter_by(student_id=id, course_id=course_id).first()
-    if existing:
-        existing.total_hours += total_hours
-        existing.remaining_hours += total_hours
-        existing.start_date = parsed_start if parsed_start else existing.start_date
-        existing.end_date = parsed_end if parsed_end else existing.end_date
-    else:
-        new_student_course = StudentCourse(
-            student_id=id,
-            course_id=course_id,
-            total_hours=total_hours,
-            remaining_hours=total_hours,
-            start_date=parsed_start,
-            end_date=parsed_end
-        )
-        db.session.add(new_student_course)
-    
-    db.session.commit()
-    return jsonify({'message': '课程添加成功'})
+    return jsonify(result)

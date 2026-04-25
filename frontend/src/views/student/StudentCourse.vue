@@ -37,7 +37,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课时数" prop="total_hours">
-          <el-input-number v-model="form.total_hours" :min="1"></el-input-number>
+          <el-input-number v-model="form.total_hours" :min="0.5" :step="0.5" :precision="1"></el-input-number>
         </el-form-item>
         <el-form-item label="开始日期">
           <el-date-picker v-model="form.start_date" type="date" placeholder="选择日期"></el-date-picker>

@@ -55,8 +55,8 @@ const selectedTeacher = ref(null)
 const fetchClasses = async () => {
   loading.value = true
   try {
-    const response = await api.get('/classes')
-    classList.value = response.data
+    const response = await api.get('/classes', { params: { page: 1, per_page: 100 } })
+    classList.value = response.data.items || []
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取班级列表失败')
   } finally {
@@ -66,8 +66,8 @@ const fetchClasses = async () => {
 
 const fetchTeachers = async () => {
   try {
-    const response = await api.get('/users')
-    teachers.value = response.data
+    const response = await api.get('/users', { params: { page: 1, per_page: 100 } })
+    teachers.value = response.data.items || []
   } catch (error) {
     console.error(error)
   }

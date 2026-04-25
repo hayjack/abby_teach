@@ -26,6 +26,23 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :prev-text="'上一页'"
+          :next-text="'下一页'"
+          :page-size-text="'条/页'"
+          :jumper-text="'前往'"
+          :total-text="'共 '"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" title="录入上课记录" width="600px">
@@ -91,6 +108,9 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const formRef = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const form = ref({
   class_id: '',
@@ -113,8 +133,14 @@ const rules = {
 const fetchRecords = async () => {
   loading.value = true
   try {
-    const response = await api.get('/class_records')
-    records.value = response.data
+    const response = await api.get('/class_records', {
+      params: {
+        page: currentPage.value,
+        per_page: pageSize.value
+      }
+    })
+    records.value = response.data.items || []
+    total.value = response.data.total || 0
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取上课记录失败')
   } finally {
@@ -187,8 +213,27 @@ const handleDelete = async (id) => {
   }
 }
 
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchRecords()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  fetchRecords()
+}
+
 onMounted(() => {
   fetchRecords()
   fetchClasses()
 })
 </script>
+
+<style scoped>
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

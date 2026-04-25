@@ -165,3 +165,123 @@ def get_student_hours():
         })
     
     return jsonify(stats)
+
+@report_bp.route('/student_attendance_detail', methods=['GET'])
+@jwt_required()
+def get_student_attendance_detail():
+    """
+    获取学生上课记录明细，用于报表统计
+    支持按学生ID、日期范围筛选
+    """
+    student_id = request.args.get('student_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    if not start_date:
+        start_date = (date.today() - timedelta(days=30)).isoformat()
+    if not end_date:
+        end_date = date.today().isoformat()
+    
+    query = AttendanceRecord.query.join(ClassRecord).filter(
+        ClassRecord.class_date >= parse_date(start_date),
+        ClassRecord.class_date <= parse_date(end_date)
+    )
+    
+    if student_id:
+        query = query.filter(AttendanceRecord.student_id == student_id)
+    
+    # 按上课日期倒序排序
+    attendances = query.order_by(ClassRecord.class_date.desc()).all()
+    
+    # 构建响应数据
+    result = []
+    for attendance in attendances:
+        class_record = attendance.class_record
+        result.append({
+            'id': attendance.id,
+            'student_id': attendance.student_id,
+            'student_name': attendance.student.name,
+            'class_name': class_record.class_.name,
+            'course_name': class_record.course.name,
+            'teacher_name': class_record.teacher.name,
+            'class_date': class_record.class_date.isoformat(),
+            'start_time': class_record.start_time.isoformat(),
+            'end_time': class_record.end_time.isoformat(),
+            'hours': float(class_record.hours),
+            'status': attendance.status,
+            'is_attended': attendance.status == '出勤'
+        })
+    
+    return jsonify(result)
+
+@report_bp.route('/dashboard', methods=['GET'])
+@jwt_required()
+def get_dashboard_stats():
+    """
+    获取首页统计数据
+    """
+    # 获取学生总数
+    student_count = Student.query.count()
+    
+    # 获取班级总数
+    from models import Class
+    class_count = Class.query.count()
+    
+    # 获取课程总数
+    course_count = Course.query.count()
+    
+    # 获取本月上课次数
+    today = date.today()
+    start_of_month = date(today.year, today.month, 1)
+    class_record_count = ClassRecord.query.filter(
+        ClassRecord.class_date >= start_of_month
+    ).count()
+    
+    # 获取学生出勤情况
+    attendance_stats = {
+        'present': 0,
+        'leave': 0,
+        'absent': 0
+    }
+    
+    recent_attendances = AttendanceRecord.query.join(ClassRecord).filter(
+        ClassRecord.class_date >= start_of_month
+    ).all()
+    
+    for attendance in recent_attendances:
+        if attendance.status == '出勤':
+            attendance_stats['present'] += 1
+        elif attendance.status == '请假':
+            attendance_stats['leave'] += 1
+        else:
+            attendance_stats['absent'] += 1
+    
+    # 获取教师上课统计
+    teacher_stats = {}
+    recent_class_records = ClassRecord.query.filter(
+        ClassRecord.class_date >= start_of_month
+    ).all()
+    
+    for record in recent_class_records:
+        tid = record.teacher_id
+        if tid not in teacher_stats:
+            teacher_stats[tid] = {
+                'teacher_name': record.teacher.name,
+                'class_count': 0
+            }
+        teacher_stats[tid]['class_count'] += 1
+    
+    # 转换教师统计为列表
+    teacher_stats_list = list(teacher_stats.values())
+    # 按上课次数排序，取前5名
+    teacher_stats_list.sort(key=lambda x: x['class_count'], reverse=True)
+    top_teachers = teacher_stats_list[:5]
+    
+    return jsonify({
+        'student_count': student_count,
+        'class_count': class_count,
+        'course_count': course_count,
+        'class_record_count': class_record_count,
+        'attendance_stats': attendance_stats,
+        'top_teachers': top_teachers
+    })

@@ -48,8 +48,14 @@ const loading2 = ref(false)
 const fetchPending = async () => {
   loading.value = true
   try {
-    const response = await api.get('/leaves', { params: { status: '待审批' } })
-    pendingLeaves.value = response.data
+    const response = await api.get('/leaves', { 
+      params: { 
+        status: '待审批',
+        page: 1,
+        per_page: 100
+      } 
+    })
+    pendingLeaves.value = response.data.items || []
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取待审批列表失败')
   } finally {
@@ -60,9 +66,21 @@ const fetchPending = async () => {
 const fetchApproved = async () => {
   loading2.value = true
   try {
-    const response = await api.get('/leaves', { params: { status: '已批准' } })
-    const response2 = await api.get('/leaves', { params: { status: '已拒绝' } })
-    approvedLeaves.value = [...response.data, ...response2.data]
+    const response = await api.get('/leaves', { 
+      params: { 
+        status: '已批准',
+        page: 1,
+        per_page: 100
+      } 
+    })
+    const response2 = await api.get('/leaves', { 
+      params: { 
+        status: '已拒绝',
+        page: 1,
+        per_page: 100
+      } 
+    })
+    approvedLeaves.value = [...(response.data.items || []), ...(response2.data.items || [])]
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取已审批列表失败')
   } finally {

@@ -50,11 +50,8 @@ const routes = [
     name: 'PaymentRecord',
     component: () => import('../views/student/PaymentRecord.vue')
   },
-  {
-    path: '/student/course',
-    name: 'StudentCourse',
-    component: () => import('../views/student/StudentCourse.vue')
-  },
+  { path: '/student/course', name: 'StudentCourse', component: () => import('../views/student/StudentCourse.vue') },
+  { path: '/student/attendance', name: 'StudentAttendance', component: () => import('../views/student/StudentAttendance.vue') },
   // 班级管理
   {
     path: '/class',

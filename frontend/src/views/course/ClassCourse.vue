@@ -99,8 +99,9 @@ const availableCourses = computed(() => {
 const fetchClasses = async () => {
   loading.value = true
   try {
-    const response = await api.get('/classes')
-    classList.value = response.data
+    const response = await api.get('/classes', { params: { page: 1, per_page: 100 } })
+    // 处理不同的数据格式
+    classList.value = response.data.items || response.data || []
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取班级列表失败')
   } finally {
@@ -110,8 +111,9 @@ const fetchClasses = async () => {
 
 const fetchCourses = async () => {
   try {
-    const response = await api.get('/courses')
-    allCourses.value = response.data
+    const response = await api.get('/courses', { params: { page: 1, per_page: 100 } })
+    // 处理不同的数据格式
+    allCourses.value = response.data.items || response.data || []
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取课程列表失败')
   }

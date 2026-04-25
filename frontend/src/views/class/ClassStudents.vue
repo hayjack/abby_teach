@@ -20,11 +20,12 @@
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="'班级: ' + currentClass.name" width="600px">
-      <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
         <el-select v-model="selectedStudent" placeholder="选择要添加的学生" filterable style="width: 300px;">
-          <el-option v-for="s in students" :key="s.id" :label="s.name + ' (' + s.english_name + ')'" :value="s.id"></el-option>
+          <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
         </el-select>
-        <el-button type="primary" style="margin-left: 10px;" @click="addStudentToClass">添加</el-button>
+        <el-date-picker v-model="joinDate" type="date" placeholder="选择加入日期"></el-date-picker>
+        <el-button type="primary" @click="addStudentToClass">添加</el-button>
       </div>
 
       <el-table :data="classStudents">
@@ -52,12 +53,13 @@ const dialogVisible = ref(false)
 const currentClass = ref({})
 const classStudents = ref([])
 const selectedStudent = ref(null)
+const joinDate = ref(new Date())
 
 const fetchClasses = async () => {
   loading.value = true
   try {
-    const response = await api.get('/classes')
-    classList.value = response.data
+    const response = await api.get('/classes', { params: { page: 1, per_page: 100 } })
+    classList.value = response.data.items || []
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取班级列表失败')
   } finally {
@@ -67,8 +69,8 @@ const fetchClasses = async () => {
 
 const fetchStudents = async () => {
   try {
-    const response = await api.get('/students')
-    students.value = response.data
+    const response = await api.get('/students', { params: { page: 1, per_page: 100 } })
+    students.value = response.data.items || []
   } catch (error) {
     console.error(error)
   }
@@ -91,10 +93,20 @@ const addStudentToClass = async () => {
     return
   }
   try {
-    await api.post(`/classes/${currentClass.value.id}/students`, { student_id: selectedStudent.value })
+    // 格式化日期为 YYYY-MM-DD 格式
+    const formattedDate = joinDate.value instanceof Date ? 
+      joinDate.value.toISOString().split('T')[0] : 
+      joinDate.value
+    
+    await api.post(`/classes/${currentClass.value.id}/students`, {
+      student_id: selectedStudent.value,
+      join_date: formattedDate
+    })
     ElMessage.success('添加成功')
     showStudents(currentClass.value)
     selectedStudent.value = null
+    // 重置日期为当前日期
+    joinDate.value = new Date()
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '添加失败')
   }

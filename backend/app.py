@@ -23,7 +23,7 @@ jwt.init_app(app)
 
 # 初始化日志系统
 logger = setup_logging(app)
-logger.info('=== 教学课消系统启动 ===')
+logger.info('=== 教学课程管理系统启动 ===')
 
 CORS(app, resources={
     r"/api/*": {

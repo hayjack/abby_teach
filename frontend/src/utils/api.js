@@ -84,3 +84,8 @@ api.interceptors.response.use(
 )
 
 export default api
+
+export const getStudents = (params) => api.get('/students', { params })
+export const getStudentAttendance = (studentId, params) => api.get(`/students/${studentId}/attendance`, { params })
+export const getClasses = (params) => api.get('/classes', { params })
+export const getCourses = (params) => api.get('/courses', { params })

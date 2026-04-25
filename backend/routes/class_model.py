@@ -9,19 +9,40 @@ class_bp = Blueprint('class_model', __name__)
 @class_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_classes():
-    classes = Class.query.all()
-    return jsonify([{
-        'id': class_.id,
-        'name': class_.name,
-        'description': class_.description,
-        'start_date': class_.start_date.isoformat() if class_.start_date else None,
-        'end_date': class_.end_date.isoformat() if class_.end_date else None,
-        'teacher_ids': [ct.teacher_id for ct in class_.class_teachers],
-        'teacher_names': [ct.teacher.name for ct in class_.class_teachers],
-        'courses': [{'course_id': cc.course_id, 'course_name': cc.course.name} for cc in class_.class_courses],
-        'student_count': len(class_.class_students),
-        'created_at': class_.created_at.isoformat()
-    } for class_ in classes])
+    # 分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    # 获取分页数据
+    pagination = Class.query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # 构建响应数据
+    classes = []
+    for class_ in pagination.items:
+        classes.append({
+            'id': class_.id,
+            'name': class_.name,
+            'description': class_.description,
+            'start_date': class_.start_date.isoformat() if class_.start_date else None,
+            'end_date': class_.end_date.isoformat() if class_.end_date else None,
+            'teacher_ids': [ct.teacher_id for ct in class_.class_teachers],
+            'teacher_names': [ct.teacher.name for ct in class_.class_teachers],
+            'courses': [{'course_id': cc.course_id, 'course_name': cc.course.name} for cc in class_.class_courses],
+            'student_count': len(class_.class_students),
+            'created_at': class_.created_at.isoformat()
+        })
+    
+    return jsonify({
+        'items': classes,
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pagination.pages
+    })
 
 @class_bp.route('/<int:id>', methods=['GET'])
 @jwt_required()
@@ -165,6 +186,7 @@ def add_class_student(class_id):
     
     data = request.get_json()
     student_id = data.get('student_id')
+    join_date = parse_date(data.get('join_date'))
     
     existing = ClassStudent.query.filter_by(class_id=class_id, student_id=student_id).first()
     if existing:
@@ -174,7 +196,11 @@ def add_class_student(class_id):
     if not student:
         return jsonify({'message': '学生不存在'}), 404
     
-    new_cs = ClassStudent(class_id=class_id, student_id=student_id)
+    new_cs = ClassStudent(
+        class_id=class_id, 
+        student_id=student_id,
+        join_date=join_date
+    )
     db.session.add(new_cs)
     db.session.commit()
     return jsonify({'message': '学生添加成功'})

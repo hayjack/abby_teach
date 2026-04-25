@@ -17,6 +17,11 @@ def get_leave_records():
     student_id = request.args.get('student_id')
     course_id = request.args.get('course_id')
     status = request.args.get('status')
+    
+    # 分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
     query = LeaveRecord.query
     if student_id:
         query = query.filter_by(student_id=student_id)
@@ -24,18 +29,36 @@ def get_leave_records():
         query = query.filter_by(course_id=course_id)
     if status:
         query = query.filter_by(status=status)
-    records = query.all()
-    return jsonify([{
-        'id': record.id,
-        'student_id': record.student_id,
-        'student_name': record.student.name,
-        'course_id': record.course_id,
-        'course_name': record.course.name,
-        'start_date': record.start_date.isoformat(),
-        'end_date': record.end_date.isoformat(),
-        'reason': record.reason,
-        'status': record.status
-    } for record in records])
+    
+    # 分页查询
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # 构建响应数据
+    records = []
+    for record in pagination.items:
+        records.append({
+            'id': record.id,
+            'student_id': record.student_id,
+            'student_name': record.student.name,
+            'course_id': record.course_id,
+            'course_name': record.course.name,
+            'start_date': record.start_date.isoformat(),
+            'end_date': record.end_date.isoformat(),
+            'reason': record.reason,
+            'status': record.status
+        })
+    
+    return jsonify({
+        'items': records,
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pagination.pages
+    })
 
 @leave_bp.route('/<int:id>', methods=['GET'])
 @jwt_required()

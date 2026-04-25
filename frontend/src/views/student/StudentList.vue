@@ -21,6 +21,23 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :prev-text="'上一页'"
+          :next-text="'下一页'"
+          :page-size-text="'条/页'"
+          :jumper-text="'前往'"
+          :total-text="'共 '"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
@@ -68,6 +85,9 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增学生')
 const formRef = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const form = ref({
   name: '',
@@ -82,15 +102,20 @@ const form = ref({
 const rules = {
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   english_name: [{ required: true, message: '请输入英文名', trigger: 'blur' }],
-  parent_name: [{ required: true, message: '请输入家长姓名', trigger: 'blur' }],
-  parent_phone: [{ required: true, message: '请输入家长手机号', trigger: 'blur' }]
+  parent_name: [{ required: true, message: '请输入家长姓名', trigger: 'blur' }]
 }
 
 const fetchStudents = async () => {
   loading.value = true
   try {
-    const response = await api.get('/students')
-    students.value = response.data
+    const response = await api.get('/students', {
+      params: {
+        page: currentPage.value,
+        per_page: pageSize.value
+      }
+    })
+    students.value = response.data.items
+    total.value = response.data.total
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取学生列表失败')
   } finally {
@@ -141,7 +166,26 @@ const handleDelete = async (id) => {
   }
 }
 
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchStudents()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  fetchStudents()
+}
+
 onMounted(() => {
   fetchStudents()
 })
 </script>
+
+<style scoped>
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

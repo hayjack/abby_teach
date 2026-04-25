@@ -33,6 +33,7 @@
             <el-menu-item index="/student/list">学生信息</el-menu-item>
             <el-menu-item index="/student/payment">缴费记录</el-menu-item>
             <el-menu-item index="/student/course">课时管理</el-menu-item>
+            <el-menu-item index="/student/attendance">上课记录</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="/class">
             <template #title>

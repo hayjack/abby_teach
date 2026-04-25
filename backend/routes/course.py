@@ -8,16 +8,37 @@ course_bp = Blueprint('course', __name__)
 @course_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_courses():
-    courses = Course.query.all()
-    return jsonify([{
-        'id': course.id,
-        'course_id': course.id,
-        'name': course.name,
-        'course_name': course.name,
-        'total_hours': float(course.total_hours),
-        'description': course.description,
-        'price': float(course.price) if course.price else None
-    } for course in courses])
+    # 分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    # 获取分页数据
+    pagination = Course.query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # 构建响应数据
+    courses = []
+    for course in pagination.items:
+        courses.append({
+            'id': course.id,
+            'course_id': course.id,
+            'name': course.name,
+            'course_name': course.name,
+            'total_hours': float(course.total_hours),
+            'description': course.description,
+            'price': float(course.price) if course.price else None
+        })
+    
+    return jsonify({
+        'items': courses,
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pagination.pages
+    })
 
 @course_bp.route('/<int:id>', methods=['GET'])
 @jwt_required()
