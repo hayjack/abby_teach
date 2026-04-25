@@ -11,18 +11,20 @@ report_bp = Blueprint('report', __name__)
 @jwt_required()
 def get_student_attendance():
     student_id = request.args.get('student_id')
+    class_id = request.args.get('class_id')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
-    if not start_date:
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-    if not end_date:
-        end_date = date.today().isoformat()
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id)
     
-    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
-        ClassRecord.class_date >= parse_date(start_date),
-        ClassRecord.class_date <= parse_date(end_date)
-    )
+    # 只有当提供了日期参数时，才添加日期过滤条件
+    if start_date:
+        query = query.filter(ClassRecord.class_date >= parse_date(start_date))
+    if end_date:
+        query = query.filter(ClassRecord.class_date <= parse_date(end_date))
+    
+    if class_id:
+        query = query.filter(ClassRecord.class_id == class_id)
     
     if student_id:
         query = query.filter(AttendanceRecord.student_id == student_id)
@@ -33,8 +35,14 @@ def get_student_attendance():
     for attendance in attendances:
         sid = attendance.student_id
         if sid not in stats:
+            # 空值检查
+            student_name = '未知学生'
+            if attendance.student:
+                student_name = attendance.student.name
+                if attendance.student.english_name:
+                    student_name = f"{attendance.student.name} ({attendance.student.english_name})"
             stats[sid] = {
-                'student_name': attendance.student.name,
+                'student_name': student_name,
                 'total': 0,
                 'present': 0,
                 'leave': 0,
@@ -57,15 +65,13 @@ def get_teacher_classes():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
-    if not start_date:
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-    if not end_date:
-        end_date = date.today().isoformat()
+    query = ClassRecord.query
     
-    query = ClassRecord.query.filter(
-        ClassRecord.class_date >= parse_date(start_date),
-        ClassRecord.class_date <= parse_date(end_date)
-    )
+    # 只有当提供了日期参数时，才添加日期过滤条件
+    if start_date:
+        query = query.filter(ClassRecord.class_date >= parse_date(start_date))
+    if end_date:
+        query = query.filter(ClassRecord.class_date <= parse_date(end_date))
     
     if teacher_id:
         query = query.filter(ClassRecord.teacher_id == teacher_id)
@@ -76,13 +82,17 @@ def get_teacher_classes():
     for record in records:
         tid = record.teacher_id
         if tid not in stats:
+            # 空值检查
+            teacher_name = '未知教师'
+            if record.teacher:
+                teacher_name = record.teacher.name
             stats[tid] = {
-                'teacher_name': record.teacher.name,
+                'teacher_name': teacher_name,
                 'total_classes': 0,
                 'total_hours': 0
             }
         stats[tid]['total_classes'] += 1
-        stats[tid]['total_hours'] += float(record.hours)
+        stats[tid]['total_hours'] += float(record.hours) if record.hours else 0
     
     return jsonify(list(stats.values()))
 
@@ -93,15 +103,13 @@ def get_course_attendance():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
-    if not start_date:
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-    if not end_date:
-        end_date = date.today().isoformat()
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id)
     
-    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
-        ClassRecord.class_date >= parse_date(start_date),
-        ClassRecord.class_date <= parse_date(end_date)
-    )
+    # 只有当提供了日期参数时，才添加日期过滤条件
+    if start_date:
+        query = query.filter(ClassRecord.class_date >= parse_date(start_date))
+    if end_date:
+        query = query.filter(ClassRecord.class_date <= parse_date(end_date))
     
     if course_id:
         query = query.filter(ClassRecord.course_id == course_id)
@@ -110,22 +118,75 @@ def get_course_attendance():
     
     stats = {}
     for attendance in attendances:
-        cid = attendance.class_record.course_id
-        if cid not in stats:
+        class_record = attendance.class_record
+        cid = class_record.course_id if class_record else None
+        if cid and cid not in stats:
+            # 空值检查
+            course_name = '未知课程'
+            if class_record and class_record.course:
+                course_name = class_record.course.name
             stats[cid] = {
-                'course_name': attendance.class_record.course.name,
+                'course_name': course_name,
                 'total': 0,
                 'present': 0,
                 'leave': 0,
                 'absent': 0
             }
-        stats[cid]['total'] += 1
-        if attendance.status == '出勤':
-            stats[cid]['present'] += 1
-        elif attendance.status == '请假':
-            stats[cid]['leave'] += 1
-        else:
-            stats[cid]['absent'] += 1
+        if cid:
+            stats[cid]['total'] += 1
+            if attendance.status == '出勤':
+                stats[cid]['present'] += 1
+            elif attendance.status == '请假':
+                stats[cid]['leave'] += 1
+            else:
+                stats[cid]['absent'] += 1
+    
+    return jsonify(list(stats.values()))
+
+@report_bp.route('/class_attendance', methods=['GET'])
+@jwt_required()
+def get_class_attendance():
+    class_id = request.args.get('class_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id)
+    
+    # 只有当提供了日期参数时，才添加日期过滤条件
+    if start_date:
+        query = query.filter(ClassRecord.class_date >= parse_date(start_date))
+    if end_date:
+        query = query.filter(ClassRecord.class_date <= parse_date(end_date))
+    
+    if class_id:
+        query = query.filter(ClassRecord.class_id == class_id)
+    
+    attendances = query.all()
+    
+    stats = {}
+    for attendance in attendances:
+        class_record = attendance.class_record
+        cid = class_record.class_id if class_record else None
+        if cid and cid not in stats:
+            # 空值检查
+            class_name = '未知班级'
+            if class_record and class_record.class_:
+                class_name = class_record.class_.name
+            stats[cid] = {
+                'class_name': class_name,
+                'total': 0,
+                'present': 0,
+                'leave': 0,
+                'absent': 0
+            }
+        if cid:
+            stats[cid]['total'] += 1
+            if attendance.status == '出勤':
+                stats[cid]['present'] += 1
+            elif attendance.status == '请假':
+                stats[cid]['leave'] += 1
+            else:
+                stats[cid]['absent'] += 1
     
     return jsonify(list(stats.values()))
 
@@ -133,6 +194,33 @@ def get_course_attendance():
 @jwt_required()
 def get_student_hours():
     student_id = request.args.get('student_id')
+    class_id = request.args.get('class_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # 如果提供了班级 ID，先获取该班级的所有学生
+    student_ids = []
+    if class_id:
+        from models import ClassStudent
+        class_students = ClassStudent.query.filter(ClassStudent.class_id == class_id).all()
+        student_ids = [cs.student_id for cs in class_students]
+    
+    # 如果提供了日期参数，需要根据日期范围过滤学生
+    # 这里的逻辑是：获取在日期范围内有上课记录的学生
+    date_filtered_student_ids = []
+    if start_date or end_date:
+        # 构建上课记录查询
+        attendance_query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id)
+        
+        # 添加日期过滤条件
+        if start_date:
+            attendance_query = attendance_query.filter(ClassRecord.class_date >= parse_date(start_date))
+        if end_date:
+            attendance_query = attendance_query.filter(ClassRecord.class_date <= parse_date(end_date))
+        
+        # 执行查询并获取学生 ID
+        attendances = attendance_query.all()
+        date_filtered_student_ids = list(set([a.student_id for a in attendances]))
     
     query = db.session.query(
         Student.id,
@@ -148,8 +236,27 @@ def get_student_hours():
         Course, StudentCourse.course_id == Course.id
     )
     
+    # 应用过滤条件
     if student_id:
         query = query.filter(Student.id == student_id)
+    else:
+        # 合并学生 ID 列表
+        filtered_student_ids = []
+        if student_ids:
+            filtered_student_ids = student_ids
+        if date_filtered_student_ids:
+            if filtered_student_ids:
+                # 取交集
+                filtered_student_ids = list(set(filtered_student_ids) & set(date_filtered_student_ids))
+            else:
+                filtered_student_ids = date_filtered_student_ids
+        
+        # 如果指定了班级但班级没有学生，返回空列表
+        if class_id and not student_ids:
+            return jsonify([])
+        
+        if filtered_student_ids:
+            query = query.filter(Student.id.in_(filtered_student_ids))
     
     results = query.all()
     
@@ -177,21 +284,23 @@ def get_student_hours():
 def get_student_attendance_detail():
     """
     获取学生上课记录明细，用于报表统计
-    支持按学生ID、日期范围筛选
+    支持按学生ID、班级ID、日期范围筛选
     """
     student_id = request.args.get('student_id')
+    class_id = request.args.get('class_id')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
-    if not start_date:
-        start_date = (date.today() - timedelta(days=30)).isoformat()
-    if not end_date:
-        end_date = date.today().isoformat()
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id)
     
-    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
-        ClassRecord.class_date >= parse_date(start_date),
-        ClassRecord.class_date <= parse_date(end_date)
-    )
+    # 只有当提供了日期参数时，才添加日期过滤条件
+    if start_date:
+        query = query.filter(ClassRecord.class_date >= parse_date(start_date))
+    if end_date:
+        query = query.filter(ClassRecord.class_date <= parse_date(end_date))
+    
+    if class_id:
+        query = query.filter(ClassRecord.class_id == class_id)
     
     if student_id:
         query = query.filter(AttendanceRecord.student_id == student_id)
@@ -203,17 +312,35 @@ def get_student_attendance_detail():
     result = []
     for attendance in attendances:
         class_record = attendance.class_record
+        # 空值检查
+        student_name = '未知学生'
+        if attendance.student:
+            student_name = attendance.student.name
+        
+        class_name = '未知班级'
+        if class_record and class_record.class_:
+            class_name = class_record.class_.name
+        
+        course_name = '未知课程'
+        if class_record and class_record.course:
+            course_name = class_record.course.name
+        
+        teacher_name = '未知教师'
+        if class_record and class_record.teacher:
+            teacher_name = class_record.teacher.name
+        
         result.append({
             'id': attendance.id,
             'student_id': attendance.student_id,
-            'student_name': attendance.student.name,
-            'class_name': class_record.class_.name,
-            'course_name': class_record.course.name,
-            'teacher_name': class_record.teacher.name,
-            'class_date': class_record.class_date.isoformat(),
-            'start_time': class_record.start_time.isoformat(),
-            'end_time': class_record.end_time.isoformat(),
-            'hours': float(class_record.hours),
+            'student_name': student_name,
+            'class_name': class_name,
+            'course_id': class_record.course_id if class_record else None,
+            'course_name': course_name,
+            'teacher_name': teacher_name,
+            'class_date': class_record.class_date.isoformat() if class_record and class_record.class_date else None,
+            'start_time': class_record.start_time.isoformat() if class_record and class_record.start_time else None,
+            'end_time': class_record.end_time.isoformat() if class_record and class_record.end_time else None,
+            'hours': float(class_record.hours) if class_record and class_record.hours else 0,
             'status': attendance.status,
             'is_attended': attendance.status == '出勤'
         })

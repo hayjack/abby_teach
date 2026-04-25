@@ -21,13 +21,13 @@
 
       <el-table :data="stats" stripe>
         <el-table-column prop="teacher_name" label="教师姓名"></el-table-column>
-        <el-table-column prop="total_classes" label="上课次数" width="120">
+        <el-table-column prop="total_classes" label="上课次数" >
           <template #default="{row}"><strong>{{ row.total_classes }}</strong></template>
         </el-table-column>
-        <el-table-column prop="total_hours" label="总课时" width="120">
+        <el-table-column prop="total_hours" label="总课时" >
           <template #default="{row}"><strong>{{ row.total_hours }}</strong></template>
         </el-table-column>
-        <el-table-column label="平均每次课时" width="140">
+        <el-table-column label="平均每次课时" >
           <template #default="{row}">
             {{ row.total_classes > 0 ? (row.total_hours / row.total_classes).toFixed(1) : '-' }}
           </template>

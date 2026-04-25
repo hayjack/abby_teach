@@ -11,6 +11,33 @@
         </div>
       </template>
 
+      <div class="search-form" style="margin-bottom: 20px;">
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <el-select v-model="searchForm.class_id" placeholder="选择班级" clearable filterable style="width: 100%;">
+              <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id"></el-option>
+            </el-select>
+          </el-col>
+          <el-col :span="6">
+            <el-select v-model="searchForm.teacher_id" placeholder="选择教师" clearable filterable style="width: 100%;">
+              <el-option v-for="t in teachers" :key="t.id" :label="t.name" :value="t.id"></el-option>
+            </el-select>
+          </el-col>
+          <el-col :span="6">
+            <el-date-picker v-model="searchForm.class_date" type="date" placeholder="选择日期" clearable style="width: 100%;"></el-date-picker>
+          </el-col>
+          <el-col :span="6">
+            <el-select v-model="searchForm.is_makeup" placeholder="上课方式" clearable style="width: 100%;">
+              <el-option label="班课" :value="false"></el-option>
+              <el-option label="补课" :value="true"></el-option>
+            </el-select>
+          </el-col>
+        </el-row>
+        <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+        </div>
+      </div>
+
       <el-table :data="records" v-loading="loading">
         <el-table-column prop="class_name" label="班级"></el-table-column>
         <el-table-column prop="course_name" label="课程"></el-table-column>
@@ -22,16 +49,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="hours" label="课时"></el-table-column>
-        <el-table-column label="上课方式" width="100">
+        <el-table-column label="上课方式" >
           <template #default="{row}">
-            <el-tag :type="row.is_makeup ? 'warning' : 'info'">
+            <el-tag :type="row.is_makeup ? 'warning' : 'info'" style="font-weight: bold;">
               {{ row.is_makeup ? '补课' : '班课' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="200">
           <template #default="{row}">
-            <el-button size="small" @click="handleView(row)">查看详情</el-button>
+            <el-button size="small" type="primary" @click="handleView(row)">查看</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
@@ -147,6 +174,7 @@ const records = ref([])
 const classes = ref([])
 const courses = ref([])
 const students = ref([])
+const teachers = ref([])
 const availableCourses = ref([])
 const attendances = ref([])
 const loading = ref(false)
@@ -158,6 +186,14 @@ const makeupFormRef = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+
+// 搜索表单
+const searchForm = ref({
+  class_id: '',
+  teacher_id: '',
+  class_date: '',
+  is_makeup: ''
+})
 
 const form = ref({
   class_id: '',
@@ -198,12 +234,19 @@ const makeupRules = {
 const fetchRecords = async () => {
   loading.value = true
   try {
-    const response = await api.get('/class_records', {
-      params: {
-        page: currentPage.value,
-        per_page: pageSize.value
-      }
-    })
+    const params = {
+      page: currentPage.value,
+      per_page: pageSize.value
+    }
+    
+    // 添加搜索条件
+    if (searchForm.value.class_id) params.class_id = searchForm.value.class_id
+    if (searchForm.value.teacher_id) params.teacher_id = searchForm.value.teacher_id
+    if (searchForm.value.class_date) params.start_date = new Date(searchForm.value.class_date).toISOString().split('T')[0]
+    if (searchForm.value.class_date) params.end_date = new Date(searchForm.value.class_date).toISOString().split('T')[0]
+    if (searchForm.value.is_makeup !== '') params.is_makeup = searchForm.value.is_makeup
+
+    const response = await api.get('/class_records', { params })
     console.log('Response data:', response.data)
     records.value = response.data.items || []
     total.value = response.data.total || 0
@@ -213,6 +256,22 @@ const fetchRecords = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 获取教师列表
+const fetchTeachers = async () => {
+  try {
+    const response = await api.get('/users')
+    teachers.value = response.data || []
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// 搜索处理
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchRecords()
 }
 
 const fetchClasses = async () => {
@@ -335,6 +394,7 @@ onMounted(() => {
   fetchClasses()
   fetchStudents()
   fetchCourses()
+  fetchTeachers()
 })
 </script>
 

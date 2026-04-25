@@ -159,21 +159,34 @@ def get_student_attendance(id):
     result = []
     for attendance in attendances:
         class_record = attendance.class_record
+        # 空值检查
+        class_name = '未知班级'
+        if class_record and class_record.class_:
+            class_name = class_record.class_.name
+        
+        course_name = '未知课程'
+        if class_record and class_record.course:
+            course_name = class_record.course.name
+        
+        teacher_name = '未知教师'
+        if class_record and class_record.teacher:
+            teacher_name = class_record.teacher.name
+        
         result.append({
             'id': attendance.id,
-            'class_record_id': class_record.id,
+            'class_record_id': class_record.id if class_record else None,
             'student_id': student.id,
             'student_name': student_name,
-            'class_name': class_record.class_.name,
-            'course_name': class_record.course.name,
-            'teacher_name': class_record.teacher.name,
-            'class_date': class_record.class_date.isoformat(),
-            'start_time': class_record.start_time.isoformat(),
-            'end_time': class_record.end_time.isoformat(),
-            'hours': float(class_record.hours),
+            'class_name': class_name,
+            'course_name': course_name,
+            'teacher_name': teacher_name,
+            'class_date': class_record.class_date.isoformat() if class_record and class_record.class_date else None,
+            'start_time': class_record.start_time.isoformat() if class_record and class_record.start_time else None,
+            'end_time': class_record.end_time.isoformat() if class_record and class_record.end_time else None,
+            'hours': float(class_record.hours) if class_record and class_record.hours else 0,
             'status': attendance.status,
             'is_attended': attendance.status == '出勤',
-            'created_at': attendance.created_at.isoformat()
+            'created_at': attendance.created_at.isoformat() if attendance.created_at else None
         })
     
     return jsonify(result)

@@ -84,7 +84,7 @@ with app.app_context():
         {'name': '报表统计', 'path': '/report', 'parent_id': None, 'icon': 'DataAnalysis', 'order': 7},
         {'name': '学生统计', 'path': '/report/student', 'parent_id': None, 'icon': None, 'order': 1},
         {'name': '教师统计', 'path': '/report/teacher', 'parent_id': None, 'icon': None, 'order': 2},
-        {'name': '课程统计', 'path': '/report/course', 'parent_id': None, 'icon': None, 'order': 3}
+        {'name': '班级统计', 'path': '/report/class', 'parent_id': None, 'icon': None, 'order': 3}
     ]
     
     for menu_data in menus:

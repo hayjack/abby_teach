@@ -132,11 +132,7 @@ const routes = [
     name: 'TeacherReport',
     component: () => import('../views/report/TeacherReport.vue')
   },
-  {
-    path: '/report/course',
-    name: 'CourseReport',
-    component: () => import('../views/report/CourseReport.vue')
-  }
+  {    path: '/report/class',    name: 'ClassReport',    component: () => import('../views/report/ClassReport.vue')  }
 ]
 
 const router = createRouter({

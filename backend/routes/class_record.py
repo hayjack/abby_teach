@@ -29,6 +29,7 @@ def get_class_records():
     teacher_id = request.args.get('teacher_id')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    is_makeup = request.args.get('is_makeup')
     
     # 分页参数
     page = request.args.get('page', 1, type=int)
@@ -51,6 +52,8 @@ def get_class_records():
         query = query.filter(ClassRecord.class_date >= parse_date(start_date))
     if end_date:
         query = query.filter(ClassRecord.class_date <= parse_date(end_date))
+    if is_makeup is not None:
+        query = query.filter_by(is_makeup=is_makeup.lower() == 'true')
     
     # 按时间倒序排序，最新的记录显示在前面
     query = query.order_by(ClassRecord.class_date.desc(), ClassRecord.start_time.desc())

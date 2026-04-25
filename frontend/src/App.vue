@@ -2,7 +2,7 @@
   <div class="app">
     <el-container style="height: 100vh; width: 100vw;">
       <!-- 侧边栏 -->
-      <el-aside width="200px" style="background-color: #303133;">
+      <el-aside width="215px" style="background-color: #303133;">
         <div class="logo">教学管理系统</div>
         <el-menu
           :default-active="activeMenu"
@@ -75,7 +75,7 @@
             </template>
             <el-menu-item index="/report/student">学生统计</el-menu-item>
             <el-menu-item index="/report/teacher">教师统计</el-menu-item>
-            <el-menu-item index="/report/course">课程统计</el-menu-item>
+            <el-menu-item index="/report/class">班级统计</el-menu-item>
           </el-sub-menu>
         </el-menu>
       </el-aside>
