@@ -6,7 +6,7 @@
       <el-row :gutter="20" style="margin-bottom: 20px;">
         <el-col :span="8">
           <el-select v-model="filters.student_id" placeholder="筛选学生" clearable filterable style="width: 100%;">
-            <el-option v-for="s in students" :key="s.id" :label="s.name" :value="s.id"></el-option>
+            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
           </el-select>
         </el-col>
         <el-col :span="8">
@@ -76,7 +76,7 @@ const fetchData = async () => {
 const fetchStudents = async () => {
   try {
     const response = await api.get('/students')
-    students.value = response.data
+    students.value = response.data.items || []
   } catch (error) {
     console.error(error)
   }

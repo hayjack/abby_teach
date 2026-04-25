@@ -147,8 +147,13 @@ def get_student_attendance(id):
     
     # 获取学生的所有考勤记录，按上课日期倒序排序
     attendances = AttendanceRecord.query.filter_by(student_id=id).join(
-        ClassRecord
+        ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id
     ).order_by(ClassRecord.class_date.desc()).all()
+    
+    # 构建学生名字：中文名(英文名)
+    student_name = student.name
+    if student.english_name:
+        student_name = f"{student.name} ({student.english_name})"
     
     # 构建响应数据
     result = []
@@ -158,7 +163,7 @@ def get_student_attendance(id):
             'id': attendance.id,
             'class_record_id': class_record.id,
             'student_id': student.id,
-            'student_name': student.name,
+            'student_name': student_name,
             'class_name': class_record.class_.name,
             'course_name': class_record.course.name,
             'teacher_name': class_record.teacher.name,
@@ -172,3 +177,59 @@ def get_student_attendance(id):
         })
     
     return jsonify(result)
+
+@student_bp.route('/<int:id>/courses', methods=['POST'])
+@jwt_required()
+def add_student_course(id):
+    """
+    给学生增加课时
+    """
+    # 检查学生是否存在
+    student = Student.query.get(id)
+    if not student:
+        return jsonify({'message': '学生不存在'}), 404
+    
+    # 获取请求数据
+    data = request.get_json()
+    course_id = data.get('course_id')
+    # 接受 total_hours 或 hours 字段
+    hours = data.get('total_hours', data.get('hours', 0))
+    start_date = parse_date(data.get('start_date'))
+    end_date = parse_date(data.get('end_date'))
+    
+    # 检查课程是否存在
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({'message': '课程不存在'}), 404
+    
+    # 检查学生是否已经有该课程的记录
+    student_course = StudentCourse.query.filter_by(
+        student_id=id, 
+        course_id=course_id
+    ).first()
+    
+    if student_course:
+        # 如果已有记录，更新剩余课时
+        student_course.remaining_hours += hours
+        student_course.total_hours += hours
+        # 更新开始和结束日期（如果提供）
+        if start_date:
+            student_course.start_date = start_date
+        if end_date:
+            student_course.end_date = end_date
+    else:
+        # 如果没有记录，创建新的学生课程记录
+        student_course = StudentCourse(
+            student_id=id,
+            course_id=course_id,
+            total_hours=hours,
+            remaining_hours=hours,
+            start_date=start_date,
+            end_date=end_date
+        )
+        db.session.add(student_course)
+    
+    # 提交数据库更改
+    db.session.commit()
+    
+    return jsonify({'message': '课时添加成功'})

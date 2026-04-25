@@ -17,8 +17,8 @@ class StudentCourse(db.Model):
     __tablename__ = 'student_courses'
     
     id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    student_id = db.Column(db.Integer, nullable=False)
+    course_id = db.Column(db.Integer, nullable=False)
     total_hours = db.Column(db.Numeric(5, 2), nullable=False)
     remaining_hours = db.Column(db.Numeric(5, 2), nullable=False)
     start_date = db.Column(db.Date)
@@ -26,5 +26,5 @@ class StudentCourse(db.Model):
     created_at = db.Column(db.DateTime, default=now_local)
     updated_at = db.Column(db.DateTime, default=now_local, onupdate=now_local)
     
-    student = db.relationship('Student', backref=db.backref('student_courses', lazy=True))
-    course = db.relationship('Course', backref=db.backref('student_courses', lazy=True))
+    student = db.relationship('Student', backref=db.backref('student_courses', lazy=True), foreign_keys=[student_id], primaryjoin="StudentCourse.student_id == Student.id")
+    course = db.relationship('Course', backref=db.backref('student_courses', lazy=True), foreign_keys=[course_id], primaryjoin="StudentCourse.course_id == Course.id")

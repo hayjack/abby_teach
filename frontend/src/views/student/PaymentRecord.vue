@@ -30,7 +30,7 @@
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="学生" prop="student_id">
           <el-select v-model="form.student_id" placeholder="请选择学生" filterable>
-            <el-option v-for="s in students" :key="s.id" :label="s.name" :value="s.id"></el-option>
+            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="金额" prop="amount">
@@ -100,7 +100,7 @@ const fetchPayments = async () => {
 const fetchStudents = async () => {
   try {
     const response = await api.get('/students')
-    students.value = response.data
+    students.value = response.data.items || []
   } catch (error) {
     console.error(error)
   }

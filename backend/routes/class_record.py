@@ -52,6 +52,9 @@ def get_class_records():
     if end_date:
         query = query.filter(ClassRecord.class_date <= parse_date(end_date))
     
+    # 按时间倒序排序，最新的记录显示在前面
+    query = query.order_by(ClassRecord.class_date.desc(), ClassRecord.start_time.desc())
+    
     # 分页查询
     pagination = query.paginate(
         page=page,
@@ -62,19 +65,35 @@ def get_class_records():
     # 构建响应数据
     records = []
     for record in pagination.items:
+        # 处理补课记录的班级名称
+        class_name = '补课'
+        if record.class_id != 0 and record.class_:
+            class_name = record.class_.name
+        
+        # 处理课程名称
+        course_name = '未知课程'
+        if record.course:
+            course_name = record.course.name
+        
+        # 处理教师名称
+        teacher_name = '未知教师'
+        if record.teacher:
+            teacher_name = record.teacher.name
+        
         records.append({
             'id': record.id,
             'class_id': record.class_id,
-            'class_name': record.class_.name,
+            'class_name': class_name,
             'course_id': record.course_id,
-            'course_name': record.course.name,
+            'course_name': course_name,
             'teacher_id': record.teacher_id,
-            'teacher_name': record.teacher.name,
+            'teacher_name': teacher_name,
             'class_date': record.class_date.isoformat(),
             'start_time': record.start_time.isoformat(),
             'end_time': record.end_time.isoformat(),
             'hours': float(record.hours),
-            'content': record.content
+            'content': record.content,
+            'is_makeup': record.is_makeup
         })
     
     return jsonify({
@@ -101,10 +120,15 @@ def get_class_record(id):
             'status': attendance.status
         })
     
+    # 处理补课记录的班级名称
+    class_name = '补课'
+    if record.class_id != 0 and record.class_:
+        class_name = record.class_.name
+    
     return jsonify({
         'id': record.id,
         'class_id': record.class_id,
-        'class_name': record.class_.name,
+        'class_name': class_name,
         'course_id': record.course_id,
         'course_name': record.course.name,
         'teacher_id': record.teacher_id,
@@ -114,6 +138,7 @@ def get_class_record(id):
         'end_time': record.end_time.isoformat(),
         'hours': float(record.hours),
         'content': record.content,
+        'is_makeup': record.is_makeup,
         'attendances': attendances
     })
 
@@ -295,3 +320,89 @@ def delete_class_record(id):
     db.session.delete(record)
     db.session.commit()
     return jsonify({'message': '上课记录删除成功'})
+
+@class_record_bp.route('/makeup', methods=['POST'])
+@jwt_required()
+def create_makeup_record():
+    data = request.get_json()
+    student_id = data.get('student_id')
+    course_id = data.get('course_id')
+    class_date = data.get('class_date')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    hours = data.get('hours')
+    content = data.get('content')
+    
+    logger.info(f'[补课记录] 创建请求: student_id={student_id}, course_id={course_id}, date={class_date}, hours={hours}')
+    
+    # 检查学生是否存在
+    student = Student.query.get(student_id)
+    if not student:
+        logger.error(f'[补课记录] 学生ID={student_id} 不存在')
+        return jsonify({'message': '学生不存在'}), 404
+    
+    # 检查课程是否存在
+    course = Course.query.get(course_id)
+    if not course:
+        logger.error(f'[补课记录] 课程ID={course_id} 不存在')
+        return jsonify({'message': '课程不存在'}), 404
+    
+    # 检查学生是否有该课程的课时
+    student_course = StudentCourse.query.filter_by(
+        student_id=student_id,
+        course_id=course_id
+    ).first()
+    if not student_course:
+        logger.error(f'[补课记录] 学生ID={student_id} 没有课程ID={course_id} 的课时')
+        return jsonify({'message': '学生没有该课程的课时，请先为学生添加课时'}), 400
+    
+    if student_course.remaining_hours < hours:
+        logger.error(f'[补课记录] 学生ID={student_id} 课时不足，剩余 {student_course.remaining_hours}，需要 {hours}')
+        return jsonify({'message': f'学生课时不足，剩余 {student_course.remaining_hours} 课时，需要 {hours} 课时'}), 400
+    
+    # 获取当前用户作为补课教师
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    if not current_user:
+        return jsonify({'message': '用户不存在'}), 404
+    
+    # 为了满足 ClassRecord 表的 class_id 字段要求，我们可以使用一个默认值，或者创建一个特殊的补课班级
+    # 这里我们使用 0 作为默认值
+    class_id = 0
+    
+    # Parse class_date
+    parsed_class_date = parse_date(class_date)
+    
+    # 创建补课记录
+    new_record = ClassRecord(
+        class_id=class_id,
+        course_id=course_id,
+        teacher_id=current_user_id,
+        class_date=parsed_class_date,
+        start_time=parse_time(start_time),
+        end_time=parse_time(end_time),
+        hours=hours,
+        content=content,
+        is_makeup=True  # 标记为补课
+    )
+    
+    db.session.add(new_record)
+    db.session.flush()  # 获取记录ID
+    
+    logger.info(f'[补课记录] 记录创建成功: record_id={new_record.id}')
+    
+    # 创建考勤记录，状态为出勤
+    new_attendance = AttendanceRecord(
+        class_record_id=new_record.id,
+        student_id=student_id,
+        status='出勤'
+    )
+    db.session.add(new_attendance)
+    
+    # 扣除学生课时
+    student_course.remaining_hours -= hours
+    logger.info(f'[补课记录] 扣除学生ID={student_id} 课时 {hours}，剩余 {student_course.remaining_hours}')
+    
+    db.session.commit()
+    logger.info(f'[补课记录] 处理完成')
+    return jsonify({'message': '补课记录创建成功', 'id': new_record.id}), 201

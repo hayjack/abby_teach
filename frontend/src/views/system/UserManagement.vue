@@ -85,7 +85,7 @@ const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   english_name: [{ required: true, message: '请输入英文名', trigger: 'blur' }],
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }]
+  phone: []
 }
 
 const fetchUsers = async () => {

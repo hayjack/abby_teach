@@ -4,7 +4,10 @@
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>上课记录</span>
-          <el-button type="primary" @click="handleAdd">录入上课记录</el-button>
+          <div>
+            <el-button type="primary" @click="handleAdd">录入上课记录</el-button>
+            <el-button type="success" @click="handleAddMakeup" style="margin-left: 10px;">录入补课记录</el-button>
+          </div>
         </div>
       </template>
 
@@ -19,6 +22,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="hours" label="课时"></el-table-column>
+        <el-table-column label="上课方式" width="100">
+          <template #default="{row}">
+            <el-tag :type="row.is_makeup ? 'warning' : 'info'">
+              {{ row.is_makeup ? '补课' : '班课' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="150">
           <template #default="{row}">
             <el-button size="small" @click="handleView(row)">查看详情</el-button>
@@ -91,6 +101,40 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <el-dialog v-model="makeupDialogVisible" title="录入补课记录" width="600px">
+      <el-form :model="makeupForm" :rules="makeupRules" ref="makeupFormRef" label-width="100px">
+        <el-form-item label="学生" prop="student_id">
+          <el-select v-model="makeupForm.student_id" placeholder="请选择学生" filterable>
+            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="课程" prop="course_id">
+          <el-select v-model="makeupForm.course_id" placeholder="请选择课程" filterable>
+            <el-option v-for="c in courses" :key="c.id" :label="c.name" :value="c.id"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="上课日期" prop="class_date">
+          <el-date-picker v-model="makeupForm.class_date" type="date" placeholder="选择日期"></el-date-picker>
+        </el-form-item>
+        <el-form-item label="开始时间" prop="start_time">
+          <el-time-picker v-model="makeupForm.start_time" placeholder="选择时间"></el-time-picker>
+        </el-form-item>
+        <el-form-item label="结束时间" prop="end_time">
+          <el-time-picker v-model="makeupForm.end_time" placeholder="选择时间"></el-time-picker>
+        </el-form-item>
+        <el-form-item label="课时数" prop="hours">
+          <el-input-number v-model="makeupForm.hours" :min="0.5" :step="0.5" :precision="1"></el-input-number>
+        </el-form-item>
+        <el-form-item label="补课内容">
+          <el-input v-model="makeupForm.content" type="textarea"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="makeupDialogVisible = false">取消</el-button>
+        <el-button type="success" @click="handleMakeupSubmit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -102,12 +146,15 @@ import { ElMessage } from 'element-plus'
 const records = ref([])
 const classes = ref([])
 const courses = ref([])
+const students = ref([])
 const availableCourses = ref([])
 const attendances = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
+const makeupDialogVisible = ref(false)
 const formRef = ref(null)
+const makeupFormRef = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -130,6 +177,24 @@ const rules = {
   end_time: [{ required: true, message: '请选择结束时间', trigger: 'change' }]
 }
 
+const makeupForm = ref({
+  student_id: '',
+  course_id: '',
+  class_date: '',
+  start_time: '',
+  end_time: '',
+  hours: 1,
+  content: ''
+})
+
+const makeupRules = {
+  student_id: [{ required: true, message: '请选择学生', trigger: 'change' }],
+  course_id: [{ required: true, message: '请选择课程', trigger: 'change' }],
+  class_date: [{ required: true, message: '请选择上课日期', trigger: 'change' }],
+  start_time: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  end_time: [{ required: true, message: '请选择结束时间', trigger: 'change' }]
+}
+
 const fetchRecords = async () => {
   loading.value = true
   try {
@@ -139,9 +204,11 @@ const fetchRecords = async () => {
         per_page: pageSize.value
       }
     })
+    console.log('Response data:', response.data)
     records.value = response.data.items || []
     total.value = response.data.total || 0
   } catch (error) {
+    console.error('Error fetching records:', error)
     ElMessage.error(error.response?.data?.message || '获取上课记录失败')
   } finally {
     loading.value = false
@@ -151,7 +218,25 @@ const fetchRecords = async () => {
 const fetchClasses = async () => {
   try {
     const response = await api.get('/classes')
-    classes.value = response.data
+    classes.value = response.data.items || []
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const fetchStudents = async () => {
+  try {
+    const response = await api.get('/students')
+    students.value = response.data.items || []
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const fetchCourses = async () => {
+  try {
+    const response = await api.get('/courses')
+    courses.value = response.data.items || []
   } catch (error) {
     console.error(error)
   }
@@ -175,6 +260,27 @@ const handleAdd = () => {
   form.value = { class_id: '', course_id: '', class_date: '', start_time: '', end_time: '', hours: 1, content: '' }
   availableCourses.value = []
   dialogVisible.value = true
+}
+
+const handleAddMakeup = () => {
+  makeupForm.value = { student_id: '', course_id: '', class_date: '', start_time: '', end_time: '', hours: 1, content: '' }
+  makeupDialogVisible.value = true
+}
+
+const handleMakeupSubmit = async () => {
+  if (!makeupFormRef.value) return
+  await makeupFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await api.post('/class_records/makeup', makeupForm.value)
+        ElMessage.success('补课记录录入成功，已自动扣除学生课时')
+        makeupDialogVisible.value = false
+        fetchRecords()
+      } catch (error) {
+        ElMessage.error(error.response?.data?.message || '录入失败')
+      }
+    }
+  })
 }
 
 const handleSubmit = async () => {
@@ -227,6 +333,8 @@ const handleCurrentChange = (current) => {
 onMounted(() => {
   fetchRecords()
   fetchClasses()
+  fetchStudents()
+  fetchCourses()
 })
 </script>
 

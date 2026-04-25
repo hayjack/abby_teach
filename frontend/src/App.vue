@@ -83,23 +83,29 @@
       <!-- 主内容区 -->
       <el-container>
         <!-- 顶部导航栏 -->
-        <el-header style="background-color: #fff; border-bottom: 1px solid #e4e7ed; display: flex; justify-content: space-between; align-items: center;">
-          <div class="header-left">
+        <el-header style="background-color: #fff; border-bottom: 1px solid #e4e7ed; display: flex; flex-direction: column; align-items: flex-start; padding: 10px 20px;">
+          <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div class="welcome-message">
+              <span>尊敬的<span style="font-weight: bold; color: #409EFF;">{{ user.name }}</span>，您好！</span>
+              <span style="margin-left: 20px;">今天是 {{ currentDate }}</span>
+            </div>
+            <div class="header-right">
+              <el-dropdown>
+                <span class="el-dropdown-link">
+                  {{ user.name }} <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </div>
+          <div class="header-left" style="width: 100%;">
             <el-button type="text" @click="collapseMenu">
               <el-icon><Menu /></el-icon>
             </el-button>
-          </div>
-          <div class="header-right">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                {{ user.name }} <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
           </div>
         </el-header>
         
@@ -113,7 +119,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from './store'
 import { House, Setting, User, FolderOpened, Reading, Calendar, Postcard, DataAnalysis, Menu, ArrowDown } from '@element-plus/icons-vue'
@@ -122,6 +128,23 @@ const router = useRouter()
 const userStore = useUserStore()
 const activeMenu = ref('/dashboard')
 const user = ref({ name: '管理员' })
+
+// 计算当前日期
+const currentDate = computed(() => {
+  return new Date().toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  })
+})
+
+// 监听用户信息变化
+watch(() => userStore.userInfo, (newUserInfo) => {
+  if (newUserInfo) {
+    user.value = newUserInfo
+  }
+}, { immediate: true })
 
 // 监听路由变化，更新激活的菜单
 router.beforeEach((to, from, next) => {
@@ -136,16 +159,15 @@ const collapseMenu = () => {
 
 // 退出登录
 const handleLogout = () => {
-  localStorage.removeItem('token')
+  userStore.logout()
   router.push('/login')
 }
 
 // 初始化用户信息
 onMounted(() => {
-  // 从localStorage获取用户信息
-  const userInfo = localStorage.getItem('user')
-  if (userInfo) {
-    user.value = JSON.parse(userInfo)
+  // 从store获取用户信息
+  if (userStore.userInfo) {
+    user.value = userStore.userInfo
   }
 })
 </script>

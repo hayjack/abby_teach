@@ -21,10 +21,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../utils/api'
+import { useUserStore } from '../store'
 
 const router = useRouter()
 const loginFormRef = ref(null)
 const loading = ref(false)
+const userStore = useUserStore()
 
 const loginForm = ref({
   username: '',
@@ -50,8 +52,8 @@ const handleLogin = async () => {
         const response = await api.post('/auth/login', loginForm.value)
         
         if (response.data.access_token) {
-          localStorage.setItem('token', response.data.access_token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
+          userStore.setToken(response.data.access_token)
+          userStore.setUserInfo(response.data.user)
           router.push('/dashboard')
         } else {
           alert('登录失败：未收到Token')

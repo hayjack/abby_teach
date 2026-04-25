@@ -7,8 +7,7 @@
         </div>
       </template>
       <div class="welcome-content">
-        <p>尊敬的{{ user.name }}，您好！</p>
-        <p>今天是 {{ currentDate }}</p>
+        <p>欢迎回来！</p>
       </div>
     </el-card>
     
@@ -73,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useUserStore } from '../store'
 import { User, FolderOpened, Reading, Calendar } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
@@ -102,6 +101,13 @@ const topTeachers = ref([])
 // 图表引用
 const attendanceChart = ref(null)
 const teacherChart = ref(null)
+
+// 监听用户信息变化
+watch(() => userStore.userInfo, (newUserInfo) => {
+  if (newUserInfo) {
+    user.value = newUserInfo
+  }
+}, { immediate: true })
 
 // 初始化图表
 const initCharts = () => {

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from models import Class, ClassTeacher, ClassStudent, Student, User
+from models import Class, ClassTeacher, ClassStudent, ClassCourse, Student, User
 from extensions import db
 from utils import parse_date
 
@@ -53,9 +53,14 @@ def get_class(id):
     
     students = []
     for cs in class_.class_students:
+        # 构建学生名字：中文名(英文名)
+        student_name = cs.student.name
+        if cs.student.english_name:
+            student_name = f"{cs.student.name} ({cs.student.english_name})"
+        
         students.append({
             'student_id': cs.student_id,
-            'student_name': cs.student.name,
+            'student_name': student_name,
             'joined_date': cs.join_date.isoformat() if cs.join_date else None
         })
     
@@ -266,3 +271,37 @@ def remove_class_course(class_id, course_id):
     db.session.delete(cc)
     db.session.commit()
     return jsonify({'message': '课程移除成功'})
+
+@class_bp.route('/<int:class_id>/teachers', methods=['POST'])
+@jwt_required()
+def add_class_teacher(class_id):
+    class_ = Class.query.get(class_id)
+    if not class_:
+        return jsonify({'message': '班级不存在'}), 404
+    
+    data = request.get_json()
+    teacher_id = data.get('teacher_id')
+    
+    existing = ClassTeacher.query.filter_by(class_id=class_id, teacher_id=teacher_id).first()
+    if existing:
+        return jsonify({'message': '该教师已在班级中'}), 400
+    
+    teacher = User.query.get(teacher_id)
+    if not teacher:
+        return jsonify({'message': '教师不存在'}), 404
+    
+    new_ct = ClassTeacher(class_id=class_id, teacher_id=teacher_id)
+    db.session.add(new_ct)
+    db.session.commit()
+    return jsonify({'message': '教师添加成功'})
+
+@class_bp.route('/<int:class_id>/teachers/<int:teacher_id>', methods=['DELETE'])
+@jwt_required()
+def remove_class_teacher(class_id, teacher_id):
+    ct = ClassTeacher.query.filter_by(class_id=class_id, teacher_id=teacher_id).first()
+    if not ct:
+        return jsonify({'message': '该教师不在班级中'}), 404
+    
+    db.session.delete(ct)
+    db.session.commit()
+    return jsonify({'message': '教师移除成功'})

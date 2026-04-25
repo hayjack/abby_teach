@@ -19,7 +19,7 @@ def get_student_attendance():
     if not end_date:
         end_date = date.today().isoformat()
     
-    query = AttendanceRecord.query.join(ClassRecord).filter(
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
         ClassRecord.class_date >= parse_date(start_date),
         ClassRecord.class_date <= parse_date(end_date)
     )
@@ -98,7 +98,7 @@ def get_course_attendance():
     if not end_date:
         end_date = date.today().isoformat()
     
-    query = AttendanceRecord.query.join(ClassRecord).filter(
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
         ClassRecord.class_date >= parse_date(start_date),
         ClassRecord.class_date <= parse_date(end_date)
     )
@@ -137,6 +137,7 @@ def get_student_hours():
     query = db.session.query(
         Student.id,
         Student.name,
+        Student.english_name,
         Course.id.label('course_id'),
         Course.name.label('course_name'),
         StudentCourse.total_hours,
@@ -154,9 +155,14 @@ def get_student_hours():
     
     stats = []
     for result in results:
+        # 构建学生名字：中文名(英文名)
+        student_name = result.name
+        if result.english_name:
+            student_name = f"{result.name} ({result.english_name})"
+        
         stats.append({
             'student_id': result.id,
-            'student_name': result.name,
+            'student_name': student_name,
             'course_id': result.course_id,
             'course_name': result.course_name,
             'total_hours': result.total_hours,
@@ -182,7 +188,7 @@ def get_student_attendance_detail():
     if not end_date:
         end_date = date.today().isoformat()
     
-    query = AttendanceRecord.query.join(ClassRecord).filter(
+    query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
         ClassRecord.class_date >= parse_date(start_date),
         ClassRecord.class_date <= parse_date(end_date)
     )
@@ -244,7 +250,7 @@ def get_dashboard_stats():
         'absent': 0
     }
     
-    recent_attendances = AttendanceRecord.query.join(ClassRecord).filter(
+    recent_attendances = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id).filter(
         ClassRecord.class_date >= start_of_month
     ).all()
     

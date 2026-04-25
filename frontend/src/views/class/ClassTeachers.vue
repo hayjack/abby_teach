@@ -67,7 +67,7 @@ const fetchClasses = async () => {
 const fetchTeachers = async () => {
   try {
     const response = await api.get('/users', { params: { page: 1, per_page: 100 } })
-    teachers.value = response.data.items || []
+    teachers.value = response.data || []
   } catch (error) {
     console.error(error)
   }
