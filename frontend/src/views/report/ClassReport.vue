@@ -16,6 +16,31 @@
 
     <el-button type="primary" @click="fetchData" style="margin-bottom: 20px;">查询</el-button>
 
+    <el-card v-loading="classRecordsLoading" style="margin-bottom: 20px;">
+      <template #header><span>班级上课记录</span></template>
+
+      <el-table :data="classRecords" stripe>
+        <el-table-column prop="class_name" label="班级名称"></el-table-column>
+        <el-table-column prop="course_name" label="课程名称"></el-table-column>
+        <el-table-column prop="teacher_name" label="教师名称"></el-table-column>
+        <el-table-column prop="class_date" label="上课日期"></el-table-column>
+        <el-table-column prop="start_time" label="开始时间"></el-table-column>
+        <el-table-column prop="end_time" label="结束时间"></el-table-column>
+      </el-table>
+
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </el-card>
+
     <el-card v-loading="loading">
       <template #header><span>班级出勤统计</span></template>
 
@@ -41,31 +66,6 @@
       <el-divider></el-divider>
 
       <div ref="chartRef" style="height: 400px;"></div>
-    </el-card>
-
-    <el-card v-loading="classRecordsLoading" style="margin-top: 20px;">
-      <template #header><span>班级上课记录</span></template>
-
-      <el-table :data="classRecords" stripe>
-        <el-table-column prop="class_name" label="班级名称"></el-table-column>
-        <el-table-column prop="course_name" label="课程名称"></el-table-column>
-        <el-table-column prop="teacher_name" label="教师名称"></el-table-column>
-        <el-table-column prop="class_date" label="上课日期"></el-table-column>
-        <el-table-column prop="start_time" label="开始时间"></el-table-column>
-        <el-table-column prop="end_time" label="结束时间"></el-table-column>
-      </el-table>
-
-      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
-        <el-pagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="pagination.total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
     </el-card>
   </div>
 </template>
@@ -149,14 +149,53 @@ const renderChart = () => {
   if (chartInstance) chartInstance.dispose()
 
   chartInstance = echarts.init(chartRef.value)
+  
+  // 准备数据
+  const classNames = stats.value.map(s => s.class_name)
+  const presentData = stats.value.map(s => s.present)
+  const leaveData = stats.value.map(s => s.leave)
+  const absentData = stats.value.map(s => s.absent)
+
   chartInstance.setOption({
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0 },
-    series: [{
-      type: 'pie',
-      radius: ['35%', '65%'],
-      data: stats.value.map(s => ({ name: s.class_name, value: s.total }))
-    }]
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['出勤', '请假', '旷课'], bottom: 0 },
+    xAxis: {
+      type: 'category',
+      data: classNames,
+      axisLabel: {
+        interval: 0,
+        rotate: 30
+      }
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [
+      {
+        name: '出勤',
+        type: 'bar',
+        data: presentData,
+        itemStyle: {
+          color: '#67C23A'
+        }
+      },
+      {
+        name: '请假',
+        type: 'bar',
+        data: leaveData,
+        itemStyle: {
+          color: '#E6A23C'
+        }
+      },
+      {
+        name: '旷课',
+        type: 'bar',
+        data: absentData,
+        itemStyle: {
+          color: '#F56C6C'
+        }
+      }
+    ]
   })
 }
 

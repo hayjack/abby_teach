@@ -40,10 +40,14 @@ def get_leave_records():
     # 构建响应数据
     records = []
     for record in pagination.items:
+        # 构建学生名字：中文名(英文名)
+        student_name = record.student.name
+        if record.student.english_name:
+            student_name = f"{record.student.name} ({record.student.english_name})"
         records.append({
             'id': record.id,
             'student_id': record.student_id,
-            'student_name': record.student.name,
+            'student_name': student_name,
             'course_id': record.course_id,
             'course_name': record.course.name,
             'start_date': record.start_date.isoformat(),
@@ -66,10 +70,14 @@ def get_leave_record(id):
     record = LeaveRecord.query.get(id)
     if not record:
         return jsonify({'message': '请假记录不存在'}), 404
+    # 构建学生名字：中文名(英文名)
+    student_name = record.student.name
+    if record.student.english_name:
+        student_name = f"{record.student.name} ({record.student.english_name})"
     return jsonify({
         'id': record.id,
         'student_id': record.student_id,
-        'student_name': record.student.name,
+        'student_name': student_name,
         'course_id': record.course_id,
         'course_name': record.course.name,
         'start_date': record.start_date.isoformat(),
