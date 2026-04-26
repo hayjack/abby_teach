@@ -3,17 +3,19 @@
     <el-card>
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>班级教师管理</span>
-          <el-button type="primary" @click="handleAdd">添加教师到班级</el-button>
+          <span style="font-size: 16px; font-weight: bold;">班级教师</span>
         </div>
       </template>
 
-      <el-table :data="classList" v-loading="loading">
+      <el-table :data="classList" v-loading="loading" stripe style="width: 100%;">
         <el-table-column prop="id" label="班级ID"></el-table-column>
         <el-table-column prop="name" label="班级名称"></el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{row}">
-            <el-button size="small" @click="showTeachers(row)">查看/编辑教师</el-button>
+            <el-button size="small" @click="showTeachers(row)">
+              <el-icon><View /></el-icon>
+              <span>查看/编辑教师</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -22,16 +24,22 @@
     <el-dialog v-model="dialogVisible" :title="'班级: ' + currentClass.name" width="600px">
       <div style="margin-bottom: 16px;">
         <el-select v-model="selectedTeacher" placeholder="选择要添加的教师" filterable style="width: 300px;">
-          <el-option v-for="t in teachers" :key="t.id" :label="t.name + ' (' + t.english_name + ')'" :value="t.id"></el-option>
-        </el-select>
-        <el-button type="primary" style="margin-left: 10px;" @click="addTeacherToClass">添加</el-button>
+            <el-option v-for="t in teachers" :key="t.id" :label="`${t.name} (${t.english_name})`" :value="t.id"></el-option>
+          </el-select>
+        <el-button type="primary" style="margin-left: 10px;" @click="addTeacherToClass">
+          <el-icon><Plus /></el-icon>
+          <span>添加</span>
+        </el-button>
       </div>
 
-      <el-table :data="classTeachers">
+      <el-table :data="classTeachers" stripe style="width: 100%;">
         <el-table-column prop="teacher_name" label="教师姓名"></el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{row}">
-            <el-button size="small" type="danger" @click="removeTeacher(row.teacher_id)">移除</el-button>
+            <el-button size="small" type="danger" @click="removeTeacher(row.teacher_id)">
+              <el-icon><Delete /></el-icon>
+              <span>移除</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -43,6 +51,8 @@
 import { ref, onMounted } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Plus, View, Delete } from '@element-plus/icons-vue'
+import { getTeachers } from '../../utils/services'
 
 const classList = ref([])
 const teachers = ref([])
@@ -66,8 +76,7 @@ const fetchClasses = async () => {
 
 const fetchTeachers = async () => {
   try {
-    const response = await api.get('/users', { params: { page: 1, per_page: 100 } })
-    teachers.value = response.data || []
+    teachers.value = await getTeachers()
   } catch (error) {
     console.error(error)
   }

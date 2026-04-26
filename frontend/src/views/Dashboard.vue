@@ -234,36 +234,60 @@ onMounted(() => {
 
 <style scoped>
 .dashboard {
-  padding: 20px;
+  padding: 0;
   gap: 20px;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .welcome-card {
   margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.welcome-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .welcome-content {
   font-size: 16px;
   line-height: 1.5;
+  color: #606266;
+  padding: 20px 0;
 }
 
 .stats-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
   margin-bottom: 20px;
 }
 
 .stat-card {
-  padding: 20px;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  background: #fff;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
 
 .stat-item {
@@ -275,6 +299,18 @@ onMounted(() => {
 .stat-icon {
   font-size: 48px;
   color: #409EFF;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ecf5ff;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.1);
 }
 
 .stat-info {
@@ -285,26 +321,38 @@ onMounted(() => {
   font-size: 32px;
   font-weight: bold;
   color: #303133;
+  line-height: 1.2;
 }
 
 .stat-label {
   font-size: 14px;
   color: #606266;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .charts-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 20px;
+  margin-bottom: 20px;
 }
 
 .chart-card {
-  padding: 20px;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  background: #fff;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
 
 .chart {
   height: 300px;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
@@ -315,5 +363,29 @@ onMounted(() => {
   .chart {
     height: 250px;
   }
+  
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 自定义滚动条 */
+.dashboard::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dashboard::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.dashboard::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.dashboard::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style>

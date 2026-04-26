@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
-from models import Student, StudentCourse, Course
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from models import Student, StudentCourse, Course, StudentHoursHistory
 from extensions import db
 from datetime import date
 from utils import parse_date
@@ -139,16 +139,47 @@ def get_student_attendance(id):
     获取学生的上课记录（考勤记录）
     """
     from models import AttendanceRecord, ClassRecord, Course, User, Class, Student
+    from datetime import datetime
     
     # 检查学生是否存在
     student = Student.query.get(id)
     if not student:
         return jsonify({'message': '学生不存在'}), 404
     
-    # 获取学生的所有考勤记录，按上课日期倒序排序
-    attendances = AttendanceRecord.query.filter_by(student_id=id).join(
+    # 获取请求参数
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    is_makeup = request.args.get('is_makeup')
+    
+    # 构建查询
+    query = AttendanceRecord.query.filter_by(student_id=id).join(
         ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id
-    ).order_by(ClassRecord.class_date.desc()).all()
+    )
+    
+    # 添加日期过滤条件
+    if start_date:
+        try:
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            query = query.filter(ClassRecord.class_date >= start)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            query = query.filter(ClassRecord.class_date <= end)
+        except ValueError:
+            pass
+    
+    # 添加上课方式过滤条件
+    if is_makeup is not None:
+        try:
+            is_makeup_bool = is_makeup.lower() == 'true' or is_makeup == '1'
+            query = query.filter(ClassRecord.is_makeup == is_makeup_bool)
+        except (ValueError, AttributeError):
+            pass
+    
+    # 按上课日期倒序排序
+    attendances = query.order_by(ClassRecord.class_date.desc()).all()
     
     # 构建学生名字：中文名(英文名)
     student_name = student.name
@@ -186,14 +217,15 @@ def get_student_attendance(id):
             'hours': float(class_record.hours) if class_record and class_record.hours else 0,
             'status': attendance.status,
             'is_attended': attendance.status == '出勤',
+            'is_makeup': class_record.is_makeup if class_record else False,
             'created_at': attendance.created_at.isoformat() if attendance.created_at else None
         })
     
     return jsonify(result)
 
-@student_bp.route('/<int:id>/courses', methods=['POST'])
+@student_bp.route('/<int:id>/hours', methods=['POST'])
 @jwt_required()
-def add_student_course(id):
+def add_student_hours(id):
     """
     给学生增加课时
     """
@@ -207,42 +239,63 @@ def add_student_course(id):
     course_id = data.get('course_id')
     # 接受 total_hours 或 hours 字段
     hours = data.get('total_hours', data.get('hours', 0))
-    start_date = parse_date(data.get('start_date'))
-    end_date = parse_date(data.get('end_date'))
+    remark = data.get('remark', '')
     
     # 检查课程是否存在
     course = Course.query.get(course_id)
     if not course:
         return jsonify({'message': '课程不存在'}), 404
     
-    # 检查学生是否已经有该课程的记录
-    student_course = StudentCourse.query.filter_by(
-        student_id=id, 
-        course_id=course_id
-    ).first()
+    # 获取当前操作人ID
+    operator_id = get_jwt_identity()
     
-    if student_course:
-        # 如果已有记录，更新剩余课时
-        student_course.remaining_hours += hours
-        student_course.total_hours += hours
-        # 更新开始和结束日期（如果提供）
-        if start_date:
-            student_course.start_date = start_date
-        if end_date:
-            student_course.end_date = end_date
-    else:
-        # 如果没有记录，创建新的学生课程记录
-        student_course = StudentCourse(
-            student_id=id,
-            course_id=course_id,
-            total_hours=hours,
-            remaining_hours=hours,
-            start_date=start_date,
-            end_date=end_date
-        )
-        db.session.add(student_course)
+    # 创建课时历史记录
+    history = StudentHoursHistory(
+        student_id=id,
+        course_id=course_id,
+        hours_added=hours,
+        operator_id=operator_id,
+        remark=remark
+    )
+    db.session.add(history)
     
     # 提交数据库更改
     db.session.commit()
     
     return jsonify({'message': '课时添加成功'})
+
+@student_bp.route('/<int:id>/hours/history', methods=['GET'])
+@jwt_required()
+def get_student_hours_history(id):
+    """
+    获取学生的课时历史记录
+    """
+    # 检查学生是否存在
+    student = Student.query.get(id)
+    if not student:
+        return jsonify({'message': '学生不存在'}), 404
+    
+    # 获取课时历史记录，按创建时间倒序排序
+    history_records = StudentHoursHistory.query.filter_by(
+        student_id=id
+    ).order_by(StudentHoursHistory.created_at.desc()).all()
+    
+    # 构建响应数据
+    result = []
+    for record in history_records:
+        # 获取课程名称
+        course = Course.query.get(record.course_id)
+        course_name = course.name if course else '未知课程'
+        
+        result.append({
+            'id': record.id,
+            'student_id': record.student_id,
+            'course_id': record.course_id,
+            'course_name': course_name,
+            'hours_added': float(record.hours_added),
+            'operator_id': record.operator_id,
+            'remark': record.remark,
+            'created_at': record.created_at.isoformat() if record.created_at else None
+        })
+    
+    return jsonify(result)

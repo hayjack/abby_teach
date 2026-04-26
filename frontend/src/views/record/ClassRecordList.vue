@@ -3,10 +3,16 @@
     <el-card>
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>上课记录</span>
+          <span style="font-size: 16px; font-weight: bold;">教师上课记录</span>
           <div>
-            <el-button type="primary" @click="handleAdd">录入上课记录</el-button>
-            <el-button type="success" @click="handleAddMakeup" style="margin-left: 10px;">录入补课记录</el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>
+              <span>新增班课</span>
+            </el-button>
+            <el-button type="success" @click="handleAddMakeup" style="margin-left: 10px;">
+              <el-icon><Plus /></el-icon>
+              <span>新增补课</span>
+            </el-button>
           </div>
         </div>
       </template>
@@ -24,21 +30,34 @@
             </el-select>
           </el-col>
           <el-col :span="6">
-            <el-date-picker v-model="searchForm.class_date" type="date" placeholder="选择日期" clearable style="width: 100%;"></el-date-picker>
-          </el-col>
-          <el-col :span="6">
             <el-select v-model="searchForm.is_makeup" placeholder="上课方式" clearable style="width: 100%;">
               <el-option label="班课" :value="false"></el-option>
               <el-option label="补课" :value="true"></el-option>
             </el-select>
           </el-col>
         </el-row>
-        <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-        </div>
+        <el-row :gutter="20" style="margin-top: 10px;">
+          <el-col :span="12">
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 100%"
+              clearable
+            />
+          </el-col>
+          <el-col :span="12" style="display: flex; align-items: center; justify-content: flex-end;">
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>
+              <span>查询</span>
+            </el-button>
+          </el-col>
+        </el-row>
       </div>
 
-      <el-table :data="records" v-loading="loading">
+      <el-table :data="records" v-loading="loading" stripe style="width: 100%;">
         <el-table-column prop="class_name" label="班级"></el-table-column>
         <el-table-column prop="course_name" label="课程"></el-table-column>
         <el-table-column prop="teacher_name" label="教师"></el-table-column>
@@ -58,8 +77,14 @@
         </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{row}">
-            <el-button size="small" type="primary" @click="handleView(row)">查看</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button size="small" type="primary" @click="handleView(row)">
+              <el-icon><View /></el-icon>
+              <span>查看</span>
+            </el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">
+              <el-icon><Delete /></el-icon>
+              <span>删除</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -111,13 +136,19 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">
+          <el-icon><Close /></el-icon>
+          <span>取消</span>
+        </el-button>
+        <el-button type="success" @click="handleSubmit">
+          <el-icon><Check /></el-icon>
+          <span>确定</span>
+        </el-button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="detailVisible" title="考勤详情" width="600px">
-      <el-table :data="attendances">
+      <el-table :data="attendances" stripe style="width: 100%;">
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
         <el-table-column prop="status" label="状态">
           <template #default="{row}">
@@ -158,8 +189,14 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="makeupDialogVisible = false">取消</el-button>
-        <el-button type="success" @click="handleMakeupSubmit">确定</el-button>
+        <el-button @click="makeupDialogVisible = false">
+          <el-icon><Close /></el-icon>
+          <span>取消</span>
+        </el-button>
+        <el-button type="success" @click="handleMakeupSubmit">
+          <el-icon><Check /></el-icon>
+          <span>确定</span>
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -169,6 +206,8 @@
 import { ref, onMounted } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Plus, Search, View, Delete, Close, Check } from '@element-plus/icons-vue'
+import { getTeachers } from '../../utils/services'
 
 const records = ref([])
 const classes = ref([])
@@ -191,9 +230,11 @@ const total = ref(0)
 const searchForm = ref({
   class_id: '',
   teacher_id: '',
-  class_date: '',
   is_makeup: ''
 })
+
+// 日期区间
+const dateRange = ref([])
 
 const form = ref({
   class_id: '',
@@ -242,8 +283,10 @@ const fetchRecords = async () => {
     // 添加搜索条件
     if (searchForm.value.class_id) params.class_id = searchForm.value.class_id
     if (searchForm.value.teacher_id) params.teacher_id = searchForm.value.teacher_id
-    if (searchForm.value.class_date) params.start_date = new Date(searchForm.value.class_date).toISOString().split('T')[0]
-    if (searchForm.value.class_date) params.end_date = new Date(searchForm.value.class_date).toISOString().split('T')[0]
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = new Date(dateRange.value[0]).toISOString().split('T')[0]
+      params.end_date = new Date(dateRange.value[1]).toISOString().split('T')[0]
+    }
     if (searchForm.value.is_makeup !== '') params.is_makeup = searchForm.value.is_makeup
 
     const response = await api.get('/class_records', { params })
@@ -261,8 +304,7 @@ const fetchRecords = async () => {
 // 获取教师列表
 const fetchTeachers = async () => {
   try {
-    const response = await api.get('/users')
-    teachers.value = response.data || []
+    teachers.value = await getTeachers()
   } catch (error) {
     console.error(error)
   }

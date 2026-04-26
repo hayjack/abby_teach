@@ -1,4 +1,4 @@
-﻿﻿from extensions import db
+﻿from extensions import db
 from datetime import datetime
 from utils import now_local
 from models.user_role import UserRole

@@ -4,11 +4,46 @@
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>请假记录</span>
-          <el-button type="primary" @click="handleAdd">新增请假申请</el-button>
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>
+            <span>新增</span>
+          </el-button>
         </div>
       </template>
 
-      <el-table :data="leaves" v-loading="loading">
+      <el-row :gutter="20" style="margin-bottom: 20px;">
+        <el-col :span="8">
+          <el-select v-model="filters.class_id" placeholder="选择班级" clearable filterable style="width: 100%;" @change="handleClassChange">
+            <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id"></el-option>
+          </el-select>
+        </el-col>
+        <el-col :span="8">
+          <el-select v-model="filters.student_id" placeholder="选择学生" clearable filterable style="width: 100%;">
+            <el-option v-for="s in filteredStudents" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
+          </el-select>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" style="margin-bottom: 20px;">
+        <el-col :span="16">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+            clearable
+          />
+        </el-col>
+        <el-col :span="8" style="display: flex; align-items: center; justify-content: flex-end;">
+          <el-button type="primary" @click="fetchLeaves">
+            <el-icon><Search /></el-icon>
+            <span>查询</span>
+          </el-button>
+        </el-col>
+      </el-row>
+
+      <el-table :data="leaves" v-loading="loading" stripe style="width: 100%;">
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
         <el-table-column prop="course_name" label="课程"></el-table-column>
         <el-table-column prop="start_date" label="开始日期"></el-table-column>
@@ -16,14 +51,17 @@
         <el-table-column prop="reason" label="请假原因"></el-table-column>
         <el-table-column prop="status" label="状态">
           <template #default="{row}">
-            <el-tag :type="row.status === '已批准' ? 'success' : row.status === '已拒绝' ? 'danger' : 'warning'">
+            <el-tag :type="getStatusType(row.status)">
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150">
           <template #default="{row}">
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">
+              <el-icon><Delete /></el-icon>
+              <span>删除</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -69,27 +107,37 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">
+          <el-icon><Close /></el-icon>
+          <span>取消</span>
+        </el-button>
+        <el-button type="success" @click="handleSubmit">
+          <el-icon><Check /></el-icon>
+          <span>确定</span>
+        </el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Plus, Delete, Close, Check, Search } from '@element-plus/icons-vue'
 
 const leaves = ref([])
 const students = ref([])
 const courses = ref([])
+const classes = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const formRef = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const filters = ref({ class_id: '', student_id: '' })
+const dateRange = ref([])
 
 const form = ref({
   student_id: '',
@@ -106,15 +154,53 @@ const rules = {
   end_date: [{ required: true, message: '请选择结束日期', trigger: 'change' }]
 }
 
+// 过滤学生列表
+const filteredStudents = ref([])
+
+// 班级变化处理
+const handleClassChange = async () => {
+  filters.value.student_id = ''
+  if (filters.value.class_id) {
+    try {
+      const response = await api.get(`/classes/${filters.value.class_id}/students`)
+      filteredStudents.value = response.data
+    } catch (error) {
+      console.error('获取班级学生失败:', error)
+      filteredStudents.value = []
+    }
+  } else {
+    filteredStudents.value = students.value
+  }
+}
+
+// 获取班级列表
+const fetchClasses = async () => {
+  try {
+    const response = await api.get('/classes')
+    classes.value = response.data.items || []
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 const fetchLeaves = async () => {
   loading.value = true
   try {
-    const response = await api.get('/leaves', {
-      params: {
-        page: currentPage.value,
-        per_page: pageSize.value
-      }
-    })
+    const params = {
+      page: currentPage.value,
+      per_page: pageSize.value,
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    }
+    
+    if (filters.value.class_id) params.class_id = filters.value.class_id
+    if (filters.value.student_id) params.student_id = filters.value.student_id
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = new Date(dateRange.value[0]).toISOString().split('T')[0]
+      params.end_date = new Date(dateRange.value[1]).toISOString().split('T')[0]
+    }
+    
+    const response = await api.get('/leaves', { params })
     leaves.value = response.data.items || []
     total.value = response.data.total || 0
   } catch (error) {
@@ -185,10 +271,23 @@ const handleCurrentChange = (current) => {
   fetchLeaves()
 }
 
-onMounted(() => {
-  fetchLeaves()
-  fetchStudents()
-  fetchCourses()
+const getStatusType = (status) => {
+  if (status === '已批准') {
+    return 'success'
+  } else if (status === '已拒绝') {
+    return 'danger'
+  } else {
+    return 'warning'
+  }
+}
+
+onMounted(async () => {
+  await fetchLeaves()
+  await fetchStudents()
+  await fetchCourses()
+  await fetchClasses()
+  // 初始化学生列表
+  filteredStudents.value = students.value
 })
 </script>
 

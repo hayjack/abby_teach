@@ -3,12 +3,15 @@
     <el-card>
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>班级课程管理</span>
-          <el-button type="primary" @click="handleAddCourse">新增课程</el-button>
+          <span style="font-size: 16px; font-weight: bold;">班级课程</span>
+          <el-button type="primary" @click="handleAddCourse">
+            <el-icon><Plus /></el-icon>
+            <span>新增</span>
+          </el-button>
         </div>
       </template>
 
-      <el-table :data="classList" v-loading="loading" style="cursor: pointer;">
+      <el-table :data="classList" v-loading="loading" stripe style="width: 100%; cursor: pointer;">
         <el-table-column prop="id" label="班级ID" width="80"></el-table-column>
         <el-table-column prop="name" label="班级名称"></el-table-column>
         <el-table-column label="课程" width="300">
@@ -21,7 +24,10 @@
         </el-table-column>
         <el-table-column label="操作" width="150">
           <template #default="{row}">
-            <el-button size="small" @click="showCourses(row)">管理课程</el-button>
+            <el-button size="small" @click="showCourses(row)">
+              <el-icon><Setting /></el-icon>
+              <span>管理课程</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -42,8 +48,14 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="addDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitAddCourse">确定</el-button>
+        <el-button @click="addDialogVisible = false">
+          <el-icon><Close /></el-icon>
+          <span>取消</span>
+        </el-button>
+        <el-button type="success" @click="submitAddCourse">
+          <el-icon><Check /></el-icon>
+          <span>确定</span>
+        </el-button>
       </template>
     </el-dialog>
 
@@ -53,14 +65,20 @@
         <el-select v-model="selectedCourseId" placeholder="选择要添加的课程" style="width: 300px; margin-right: 10px;" filterable>
           <el-option v-for="course in availableCourses" :key="course.id" :label="course.name" :value="course.id"></el-option>
         </el-select>
-        <el-button type="primary" @click="addCourse">添加</el-button>
+        <el-button type="primary" @click="addCourse">
+          <el-icon><Plus /></el-icon>
+          <span>添加</span>
+        </el-button>
       </div>
 
-      <el-table :data="classCourses">
+      <el-table :data="classCourses" stripe style="width: 100%;">
         <el-table-column prop="course_name" label="课程名称"></el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{row}">
-            <el-button size="small" type="danger" @click="removeCourse(row)">移除</el-button>
+            <el-button size="small" type="danger" @click="removeCourse(row)">
+              <el-icon><Delete /></el-icon>
+              <span>移除</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -72,6 +90,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Plus, Setting, Close, Check, Delete } from '@element-plus/icons-vue'
 
 const classList = ref([])
 const classCourses = ref([])

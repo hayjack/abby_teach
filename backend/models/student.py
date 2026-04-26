@@ -1,4 +1,4 @@
-﻿from extensions import db
+from extensions import db
 from datetime import datetime
 from utils import now_local
 
@@ -15,3 +15,14 @@ class Student(db.Model):
     address = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=now_local)
     updated_at = db.Column(db.DateTime, default=now_local, onupdate=now_local)
+
+class StudentHoursHistory(db.Model):
+    __tablename__ = 'student_hours_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, nullable=False)
+    course_id = db.Column(db.Integer, nullable=False)
+    hours_added = db.Column(db.Numeric(5, 2), nullable=False)
+    operator_id = db.Column(db.Integer, nullable=False)
+    remark = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=now_local)

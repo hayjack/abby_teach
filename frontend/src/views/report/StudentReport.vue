@@ -1,28 +1,37 @@
 <template>
   <div class="student-report">
     <el-row :gutter="20" style="margin-bottom: 20px;">
-      <el-col :span="6">
+      <el-col :span="5">
         <el-select v-model="filters.class_id" placeholder="筛选班级" clearable filterable style="width: 100%;">
           <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id"></el-option>
         </el-select>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="5">
         <el-select v-model="filters.student_id" placeholder="筛选学生" clearable filterable style="width: 100%;">
           <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
         </el-select>
       </el-col>
-      <el-col :span="6">
-        <el-date-picker v-model="filters.start_date" type="date" placeholder="开始日期" style="width: 100%;"></el-date-picker>
+      <el-col :span="10">
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          style="width: 100%"
+          clearable
+        />
       </el-col>
-      <el-col :span="6">
-        <el-date-picker v-model="filters.end_date" type="date" placeholder="结束日期" style="width: 100%;"></el-date-picker>
+      <el-col :span="4" style="display: flex; align-items: center; justify-content: flex-end;">
+        <el-button type="primary" @click="fetchData">
+          <el-icon><Search /></el-icon>
+          <span>查询</span>
+        </el-button>
       </el-col>
     </el-row>
 
-    <el-button type="primary" @click="fetchData" style="margin-bottom: 20px;">查询</el-button>
-
     <el-card v-loading="loading">
-      <template #header><span>学生出勤统计</span></template>
+      <template #header><span style="font-weight: bold; font-size: 16px;">学生出勤统计</span></template>
 
       <el-table :data="stats" stripe>
         <el-table-column prop="student_name" label="学生姓名" ></el-table-column>
@@ -45,7 +54,7 @@
 
       <el-divider></el-divider>
 
-      <h4>学生课时使用情况</h4>
+      <h4 style="font-weight: bold; font-size: 16px;">学生课时使用情况</h4>
       <el-table :data="hoursData" stripe>
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
         <el-table-column prop="course_name" label="课程名称"></el-table-column>
@@ -60,7 +69,10 @@
         </el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{row}">
-            <el-button type="primary" size="small" @click="showAttendanceDetail(row.student_id, row.course_id, row.student_name, row.course_name)">详情</el-button>
+            <el-button type="primary" size="small" @click="showAttendanceDetail(row.student_id, row.course_id, row.student_name, row.course_name)">
+              <el-icon><View /></el-icon>
+              <span>详情</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -98,6 +110,7 @@ import { ref, onMounted, watch, nextTick } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import { Search, View } from '@element-plus/icons-vue'
 
 const stats = ref([])
 const hoursData = ref([])
@@ -106,7 +119,8 @@ const currentAttendanceDetail = ref([])
 const students = ref([])
 const classes = ref([])
 const loading = ref(false)
-const filters = ref({ class_id: '', student_id: '', start_date: '', end_date: '' })
+const filters = ref({ class_id: '', student_id: '' })
+const dateRange = ref([])
 const chartRef = ref(null)
 const detailChartRef = ref(null)
 const chart = ref(null)
@@ -120,8 +134,10 @@ const fetchData = async () => {
     const params = {}
     if (filters.value.class_id) params.class_id = filters.value.class_id
     if (filters.value.student_id) params.student_id = filters.value.student_id
-    if (filters.value.start_date) params.start_date = new Date(filters.value.start_date).toISOString().split('T')[0]
-    if (filters.value.end_date) params.end_date = new Date(filters.value.end_date).toISOString().split('T')[0]
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = new Date(dateRange.value[0]).toISOString().split('T')[0]
+      params.end_date = new Date(dateRange.value[1]).toISOString().split('T')[0]
+    }
 
     const [res1, res2] = await Promise.all([
       api.get('/reports/student_attendance', { params }),
@@ -148,8 +164,10 @@ const showAttendanceDetail = async (studentId, courseId, studentName, courseName
     const params = {
       student_id: studentId
     }
-    if (filters.value.start_date) params.start_date = new Date(filters.value.start_date).toISOString().split('T')[0]
-    if (filters.value.end_date) params.end_date = new Date(filters.value.end_date).toISOString().split('T')[0]
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = new Date(dateRange.value[0]).toISOString().split('T')[0]
+      params.end_date = new Date(dateRange.value[1]).toISOString().split('T')[0]
+    }
 
     const response = await api.get('/reports/student_attendance_detail', { params })
     // 过滤出该课程的记录

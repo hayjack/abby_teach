@@ -3,17 +3,21 @@
     <el-card>
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>班级学生管理</span>
-          <el-button type="primary" @click="handleAdd">添加学生到班级</el-button>
+          <span style="font-size: 16px; font-weight: bold;">
+            班级学生
+          </span>
         </div>
       </template>
 
-      <el-table :data="classList" v-loading="loading">
+      <el-table :data="classList" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="id" label="班级ID"></el-table-column>
         <el-table-column prop="name" label="班级名称"></el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{row}">
-            <el-button size="small" @click="showStudents(row)">查看/编辑学生</el-button>
+            <el-button size="small" @click="showStudents(row)">
+              <el-icon><View /></el-icon>
+              <span>查看/编辑学生</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -25,15 +29,21 @@
           <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
         </el-select>
         <el-date-picker v-model="joinDate" type="date" placeholder="选择加入日期"></el-date-picker>
-        <el-button type="primary" @click="addStudentToClass">添加</el-button>
+        <el-button type="primary" @click="addStudentToClass">
+          <el-icon><Plus /></el-icon>
+          <span>添加</span>
+        </el-button>
       </div>
 
-      <el-table :data="classStudents">
+      <el-table :data="classStudents" stripe style="width: 100%;">
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
         <el-table-column prop="joined_date" label="加入日期"></el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{row}">
-            <el-button size="small" type="danger" @click="removeStudent(row.student_id)">移除</el-button>
+            <el-button size="small" type="danger" @click="removeStudent(row.id)">
+              <el-icon><Delete /></el-icon>
+              <span>删除</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -42,9 +52,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Plus, View, Delete } from '@element-plus/icons-vue'
 
 const classList = ref([])
 const students = ref([])

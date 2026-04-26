@@ -3,12 +3,15 @@
     <el-card>
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>课程信息</span>
-          <el-button type="primary" @click="handleAdd">新增课程</el-button>
+         <span style="font-size: 16px; font-weight: bold;">课程信息</span>
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>
+            <span>新增</span>
+          </el-button>
         </div>
       </template>
 
-      <el-table :data="courses" v-loading="loading">
+      <el-table :data="courses" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="name" label="课程名称"></el-table-column>
         <el-table-column prop="description" label="描述"></el-table-column>
         <el-table-column prop="total_hours" label="总课时"></el-table-column>
@@ -19,8 +22,14 @@
         </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{row}">
-            <el-button size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button size="small" @click="handleEdit(row)">
+              <el-icon><Edit /></el-icon>
+              <span>编辑</span>
+            </el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">
+              <el-icon><Delete /></el-icon>
+              <span>删除</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -59,8 +68,14 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">
+          <el-icon><Close /></el-icon>
+          <span>取消</span>
+        </el-button>
+        <el-button type="success" @click="handleSubmit">
+          <el-icon><Check /></el-icon>
+          <span>确定</span>
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -70,6 +85,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Plus, Edit, Delete, Close, Check } from '@element-plus/icons-vue'
 
 const courses = ref([])
 const loading = ref(false)

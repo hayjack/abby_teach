@@ -1,44 +1,59 @@
 <template>
   <div class="attendance-record">
     <el-card>
-      <template #header><span>考勤记录统计</span></template>
-
+      <template #header>
+        <span style="font-size: 16px; font-weight: bold;">考勤记录</span>
+      </template>
       <el-row :gutter="20" style="margin-bottom: 20px;">
-        <el-col :span="8">
+        <el-col :span="5">
           <el-select v-model="filters.student_id" placeholder="筛选学生" clearable filterable style="width: 100%;">
-            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
+            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`"
+              :value="s.id"></el-option>
           </el-select>
         </el-col>
-        <el-col :span="8">
-          <el-date-picker v-model="filters.start_date" type="date" placeholder="开始日期" style="width: 100%;"></el-date-picker>
+        <el-col :span="12">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+            clearable
+          />
         </el-col>
-        <el-col :span="8">
-          <el-date-picker v-model="filters.end_date" type="date" placeholder="结束日期" style="width: 100%;"></el-date-picker>
+        <el-col :span="5">
+          <span></span>
+        </el-col>
+        <el-col :span="2">
+          <el-button type="primary" @click="fetchData" >
+          <el-icon>
+            <Search />
+          </el-icon>
+          <span>查询</span>
+        </el-button>
         </el-col>
       </el-row>
-
-      <el-button type="primary" @click="fetchData" style="margin-bottom: 20px;">查询</el-button>
-
-      <el-table :data="stats" v-loading="loading">
+      <el-table :data="stats" v-loading="loading" stripe style="width: 100%;">
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
         <el-table-column prop="total" label="总次数"></el-table-column>
         <el-table-column prop="present" label="出勤次数">
-          <template #default="{row}">
+          <template #default="{ row }">
             <el-tag type="success">{{ row.present }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="leave" label="请假次数">
-          <template #default="{row}">
+          <template #default="{ row }">
             <el-tag type="warning">{{ row.leave }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="absent" label="旷课次数">
-          <template #default="{row}">
+          <template #default="{ row }">
             <el-tag type="danger">{{ row.absent }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="出勤率">
-          <template #default="{row}">
+          <template #default="{ row }">
             {{ row.total > 0 ? ((row.present / row.total) * 100).toFixed(1) + '%' : '-' }}
           </template>
         </el-table-column>
@@ -48,22 +63,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 
 const stats = ref([])
 const students = ref([])
 const loading = ref(false)
-const filters = ref({ student_id: '', start_date: '', end_date: '' })
+const filters = ref({ student_id: '' })
+const dateRange = ref([])
 
 const fetchData = async () => {
   loading.value = true
   try {
     const params = {}
     if (filters.value.student_id) params.student_id = filters.value.student_id
-    if (filters.value.start_date) params.start_date = new Date(filters.value.start_date).toISOString().split('T')[0]
-    if (filters.value.end_date) params.end_date = new Date(filters.value.end_date).toISOString().split('T')[0]
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = new Date(dateRange.value[0]).toISOString().split('T')[0]
+      params.end_date = new Date(dateRange.value[1]).toISOString().split('T')[0]
+    }
     const response = await api.get('/reports/student_attendance', { params })
     stats.value = response.data
   } catch (error) {

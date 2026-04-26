@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from models import LeaveRecord, Student, Course
+from models import LeaveRecord, Student, Course, ClassStudent
 from extensions import db
 from datetime import date
 from utils import parse_date
@@ -17,6 +17,11 @@ def get_leave_records():
     student_id = request.args.get('student_id')
     course_id = request.args.get('course_id')
     status = request.args.get('status')
+    class_id = request.args.get('class_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    sort_by = request.args.get('sort_by', 'start_date')
+    sort_order = request.args.get('sort_order', 'desc')
     
     # 分页参数
     page = request.args.get('page', 1, type=int)
@@ -29,6 +34,30 @@ def get_leave_records():
         query = query.filter_by(course_id=course_id)
     if status:
         query = query.filter_by(status=status)
+    if class_id:
+        # 通过ClassStudent中间表过滤班级的学生
+        query = query.join(Student, LeaveRecord.student_id == Student.id).join(ClassStudent, Student.id == ClassStudent.student_id).filter(ClassStudent.class_id == class_id)
+    if start_date:
+        parsed_start = parse_date(start_date)
+        if parsed_start:
+            query = query.filter(LeaveRecord.start_date >= parsed_start)
+    if end_date:
+        parsed_end = parse_date(end_date)
+        if parsed_end:
+            query = query.filter(LeaveRecord.end_date <= parsed_end)
+    
+    # 排序
+    if sort_by == 'created_at':
+        if sort_order == 'desc':
+            query = query.order_by(LeaveRecord.created_at.desc())
+        else:
+            query = query.order_by(LeaveRecord.created_at.asc())
+    else:
+        # 默认按请假开始日期排序
+        if sort_order == 'desc':
+            query = query.order_by(LeaveRecord.start_date.desc())
+        else:
+            query = query.order_by(LeaveRecord.start_date.asc())
     
     # 分页查询
     pagination = query.paginate(
