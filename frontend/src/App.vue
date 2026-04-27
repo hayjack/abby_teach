@@ -80,6 +80,7 @@
             <el-menu-item index="/report/student">学生统计</el-menu-item>
             <el-menu-item index="/report/teacher">教师统计</el-menu-item>
             <el-menu-item index="/report/class">班级统计</el-menu-item>
+            <el-menu-item index="/report/schedule">课程表</el-menu-item>
           </el-sub-menu>
         </el-menu>
       </el-aside>
@@ -183,7 +184,8 @@ const routeMap = {
   '/report': '报表统计',
   '/report/student': '学生统计',
   '/report/teacher': '教师统计',
-  '/report/class': '班级统计'
+  '/report/class': '班级统计',
+  '/report/schedule': '课程表'
 }
 
 // 生成面包屑导航

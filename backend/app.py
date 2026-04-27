@@ -50,6 +50,7 @@ from routes.class_model import class_bp
 from routes.class_record import class_record_bp
 from routes.leave import leave_bp
 from routes.report import report_bp
+from routes.schedule import schedule_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(user_bp, url_prefix='/api/users')
@@ -62,6 +63,7 @@ app.register_blueprint(class_bp, url_prefix='/api/classes')
 app.register_blueprint(class_record_bp, url_prefix='/api/class_records')
 app.register_blueprint(leave_bp, url_prefix='/api/leaves')
 app.register_blueprint(report_bp, url_prefix='/api/reports')
+app.register_blueprint(schedule_bp, url_prefix='/api')
 
 @app.route('/api/test', methods=['GET'])
 def test_api():

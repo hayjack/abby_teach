@@ -8,3 +8,4 @@ from .course import Course, StudentCourse
 from .class_model import Class, ClassStudent, ClassTeacher, ClassCourse
 from .class_record import ClassRecord, AttendanceRecord
 from .leave import LeaveRecord
+from .schedule import ClassSchedule
