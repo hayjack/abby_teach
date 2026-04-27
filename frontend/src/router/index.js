@@ -51,7 +51,6 @@ const routes = [
     component: () => import('../views/student/PaymentRecord.vue')
   },
   { path: '/student/course', name: 'StudentCourse', component: () => import('../views/student/StudentCourse.vue') },
-  { path: '/student/attendance', name: 'StudentAttendance', component: () => import('../views/student/StudentAttendance.vue') },
   // 班级管理
   {
     path: '/class',
@@ -92,16 +91,9 @@ const routes = [
     path: '/record',
     redirect: '/record/list'
   },
-  {
-    path: '/record/list',
-    name: 'ClassRecordList',
-    component: () => import('../views/record/ClassRecordList.vue')
-  },
-  {
-    path: '/record/attendance',
-    name: 'AttendanceRecord',
-    component: () => import('../views/record/AttendanceRecord.vue')
-  },
+  { path: '/record/list', name: 'ClassRecordList', component: () => import('../views/record/ClassRecordList.vue') },
+  { path: '/record/student', name: 'StudentClass', component: () => import('../views/record/StudentClass.vue') },
+  { path: '/record/attendance', name: 'AttendanceRecord', component: () => import('../views/record/AttendanceRecord.vue') },
   // 请假记录
   {
     path: '/leave',

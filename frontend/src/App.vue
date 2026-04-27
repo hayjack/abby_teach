@@ -37,7 +37,6 @@
             <el-menu-item index="/student/list">学生信息</el-menu-item>
             <el-menu-item index="/student/payment">缴费记录</el-menu-item>
             <el-menu-item index="/student/course">课时管理</el-menu-item>
-            <el-menu-item index="/student/attendance">上课记录</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="/class">
             <template #title>
@@ -61,7 +60,8 @@
               <el-icon><Calendar /></el-icon>
               <span>上课记录</span>
             </template>
-            <el-menu-item index="/record/list">上课记录</el-menu-item>
+            <el-menu-item index="/record/list">教师上课</el-menu-item>
+            <el-menu-item index="/record/student">学生上课</el-menu-item>
             <el-menu-item index="/record/attendance">考勤记录</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="/leave">
@@ -174,7 +174,8 @@ const routeMap = {
   '/course/list': '课程信息',
   '/course/class': '班级课程',
   '/record': '上课记录',
-  '/record/list': '上课记录',
+  '/record/list': '教师上课',
+  '/record/student': '学生上课',
   '/record/attendance': '考勤记录',
   '/leave': '请假记录',
   '/leave/list': '请假记录',
