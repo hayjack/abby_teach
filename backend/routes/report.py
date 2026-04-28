@@ -193,34 +193,13 @@ def get_class_attendance():
 @report_bp.route('/student-hours', methods=['GET'])
 @jwt_required()
 def get_student_hours():
-    student_id = request.args.get('student_id')
-    class_id = request.args.get('class_id')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
+    # 分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
     
-    # 如果提供了班级 ID，先获取该班级的所有学生
-    student_ids = []
-    if class_id:
-        from models import ClassStudent
-        class_students = ClassStudent.query.filter(ClassStudent.class_id == class_id).all()
-        student_ids = [cs.student_id for cs in class_students]
-    
-    # 如果提供了日期参数，需要根据日期范围过滤学生
-    # 这里的逻辑是：获取在日期范围内有上课记录的学生
-    date_filtered_student_ids = []
-    if start_date or end_date:
-        # 构建上课记录查询
-        attendance_query = AttendanceRecord.query.join(ClassRecord, AttendanceRecord.class_record_id == ClassRecord.id)
-        
-        # 添加日期过滤条件
-        if start_date:
-            attendance_query = attendance_query.filter(ClassRecord.class_date >= parse_date(start_date))
-        if end_date:
-            attendance_query = attendance_query.filter(ClassRecord.class_date <= parse_date(end_date))
-        
-        # 执行查询并获取学生 ID
-        attendances = attendance_query.all()
-        date_filtered_student_ids = list(set([a.student_id for a in attendances]))
+    # 查询参数
+    student_name = request.args.get('student_name')
+    course_id = request.args.get('course_id')
     
     query = db.session.query(
         Student.id,
@@ -236,40 +215,31 @@ def get_student_hours():
         Course, StudentCourse.course_id == Course.id
     )
     
-    # 应用过滤条件
-    if student_id:
-        query = query.filter(Student.id == student_id)
-    else:
-        # 合并学生 ID 列表
-        filtered_student_ids = []
-        if student_ids:
-            filtered_student_ids = student_ids
-        if date_filtered_student_ids:
-            if filtered_student_ids:
-                # 取交集
-                filtered_student_ids = list(set(filtered_student_ids) & set(date_filtered_student_ids))
-            else:
-                filtered_student_ids = date_filtered_student_ids
-        
-        # 如果指定了班级但班级没有学生，返回空列表
-        if class_id and not student_ids:
-            return jsonify([])
-        
-        if filtered_student_ids:
-            query = query.filter(Student.id.in_(filtered_student_ids))
+    # 应用学生姓名过滤条件
+    if student_name:
+        query = query.filter(Student.name.ilike(f'%{student_name}%'))
     
-    results = query.all()
+    # 应用课程ID过滤条件
+    if course_id:
+        query = query.filter(Course.id == course_id)
     
-    stats = []
-    for result in results:
-        # 构建学生名字：中文名(英文名)
-        student_name = result.name
+    # 获取分页数据
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    # 构建响应数据
+    items = []
+    for result in pagination.items:
+        student_name_display = result.name
         if result.english_name:
-            student_name = f"{result.name} ({result.english_name})"
+            student_name_display = f"{result.name} ({result.english_name})"
         
-        stats.append({
+        items.append({
             'student_id': result.id,
-            'student_name': student_name,
+            'student_name': student_name_display,
             'course_id': result.course_id,
             'course_name': result.course_name,
             'total_hours': result.total_hours,
@@ -277,7 +247,12 @@ def get_student_hours():
             'used_hours': result.total_hours - result.remaining_hours
         })
     
-    return jsonify(stats)
+    return jsonify({
+        'items': items,
+        'total': pagination.total,
+        'page': pagination.page,
+        'per_page': pagination.per_page
+    })
 
 @report_bp.route('/student_attendance_detail', methods=['GET'])
 @jwt_required()

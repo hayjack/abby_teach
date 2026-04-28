@@ -11,6 +11,26 @@
         </div>
       </template>
 
+      <div class="filter-container" style="margin-bottom: 16px;">
+        <el-form :inline="true" :model="filters" class="filter-form">
+          <el-form-item label="学生姓名">
+            <el-input v-model="filters.student_name" clearable placeholder="请输入学生姓名" style="width: 200px;"></el-input>
+          </el-form-item>
+          <el-form-item label="课程名称">
+            <el-select v-model="filters.course_id" placeholder="请选择课程" clearable filterable style="width: 200px;">
+              <el-option label="全部" :value="''"></el-option>
+              <el-option v-for="c in courses" :key="c.id" :label="c.name" :value="c.id"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="fetchStudentCourses">
+              <el-icon><Search /></el-icon>
+              <span>查询</span>
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <el-table :data="studentCourses" v-loading="loading" stripe style="width: 100%;">
         <el-table-column prop="student_name" label="学生姓名"></el-table-column>
         <el-table-column prop="course_name" label="课程名称"></el-table-column>
@@ -31,6 +51,23 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :prev-text="'上一页'"
+          :next-text="'下一页'"
+          :page-size-text="'条/页'"
+          :jumper-text="'前往'"
+          :total-text="'共 '"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" title="添加课时" width="500px">
@@ -68,9 +105,13 @@
       <el-table :data="hoursHistory" v-loading="historyLoading" stripe style="width: 100%;">
         <el-table-column prop="course_name" label="课程名称"></el-table-column>
         <el-table-column prop="hours_added" label="增加课时"></el-table-column>
-        <el-table-column prop="operator_id" label="操作人ID"></el-table-column>
+        <el-table-column prop="operator_name" label="操作人"></el-table-column>
         <el-table-column prop="remark" label="备注"></el-table-column>
-        <el-table-column prop="created_at" label="创建时间"></el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="200px">
+          <template #default="{row}">
+            {{ formatDateTime(row.created_at) }}
+          </template>
+        </el-table-column>
       </el-table>
       <template #footer>
         <el-button @click="historyDialogVisible = false">
@@ -86,7 +127,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
-import { Plus, Close, Check, View } from '@element-plus/icons-vue'
+import { Plus, Close, Check, View, Search } from '@element-plus/icons-vue'
 
 const studentCourses = ref([])
 const students = ref([])
@@ -97,6 +138,15 @@ const formRef = ref(null)
 const historyDialogVisible = ref(false)
 const hoursHistory = ref([])
 const historyLoading = ref(false)
+
+const filters = ref({
+  student_name: '',
+  course_id: ''
+})
+
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const form = ref({
   student_id: '',
@@ -114,13 +164,32 @@ const rules = {
 const fetchStudentCourses = async () => {
   loading.value = true
   try {
-    const response = await api.get('/reports/student-hours')
-    studentCourses.value = response.data
+    const response = await api.get('/reports/student-hours', {
+      params: {
+        page: currentPage.value,
+        per_page: pageSize.value,
+        student_name: filters.value.student_name,
+        course_id: filters.value.course_id
+      }
+    })
+    studentCourses.value = response.data.items || []
+    total.value = response.data.total || 0
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取课时信息失败')
   } finally {
     loading.value = false
   }
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchStudentCourses()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  fetchStudentCourses()
 }
 
 const fetchStudents = async () => {
@@ -177,6 +246,18 @@ const fetchHoursHistory = async (studentId) => {
 const handleViewHistory = (row) => {
   fetchHoursHistory(row.student_id)
   historyDialogVisible.value = true
+}
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 onMounted(() => {

@@ -11,6 +11,23 @@
         </div>
       </template>
 
+      <div class="filter-container" style="margin-bottom: 16px;">
+        <el-form :inline="true" :model="filters" class="filter-form">
+          <el-form-item label="姓名">
+            <el-input v-model="filters.name" clearable placeholder="请输入姓名" style="width: 200px;"></el-input>
+          </el-form-item>
+          <el-form-item label="英文名">
+            <el-input v-model="filters.english_name" clearable placeholder="请输入英文名" style="width: 200px;"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="fetchStudents">
+              <el-icon><Search /></el-icon>
+              <span>查询</span>
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <el-table :data="students" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="name" label="姓名"></el-table-column>
         <el-table-column prop="english_name" label="英文名"></el-table-column>
@@ -94,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../../utils/api'
 import { ElMessage } from 'element-plus'
-import { Plus, Edit, Delete, Close, Check } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Close, Check, Search } from '@element-plus/icons-vue'
 
 const students = ref([])
 const loading = ref(false)
@@ -104,6 +121,11 @@ const formRef = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+
+const filters = ref({
+  name: '',
+  english_name: ''
+})
 
 const form = ref({
   name: '',
@@ -127,7 +149,9 @@ const fetchStudents = async () => {
     const response = await api.get('/students', {
       params: {
         page: currentPage.value,
-        per_page: pageSize.value
+        per_page: pageSize.value,
+        name: filters.value.name,
+        english_name: filters.value.english_name
       }
     })
     students.value = response.data.items

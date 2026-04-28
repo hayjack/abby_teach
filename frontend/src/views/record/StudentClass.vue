@@ -105,7 +105,7 @@ import api, { getStudents, getStudentAttendance } from '@/utils/api'
 const attendanceList = ref([])
 const total = ref(0)
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const searchQuery = ref('')
 const dateRange = ref([])
 const searchForm = ref({

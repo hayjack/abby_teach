@@ -14,8 +14,23 @@ def get_students():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
+    # 查询参数
+    name = request.args.get('name')
+    english_name = request.args.get('english_name')
+    
+    # 构建查询
+    query = Student.query
+    
+    # 添加姓名过滤条件
+    if name:
+        query = query.filter(Student.name.ilike(f'%{name}%'))
+    
+    # 添加英文名过滤条件
+    if english_name:
+        query = query.filter(Student.english_name.ilike(f'%{english_name}%'))
+    
     # 获取分页数据
-    pagination = Student.query.paginate(
+    pagination = query.paginate(
         page=page,
         per_page=per_page,
         error_out=False
@@ -259,6 +274,26 @@ def add_student_hours(id):
     )
     db.session.add(history)
     
+    # 检查学生是否已经有该课程的记录
+    student_course = StudentCourse.query.filter_by(
+        student_id=id,
+        course_id=course_id
+    ).first()
+    
+    if student_course:
+        # 如果已有记录，更新剩余课时和总课时
+        student_course.total_hours += hours
+        student_course.remaining_hours += hours
+    else:
+        # 如果没有记录，创建新的记录
+        student_course = StudentCourse(
+            student_id=id,
+            course_id=course_id,
+            total_hours=hours,
+            remaining_hours=hours
+        )
+        db.session.add(student_course)
+    
     # 提交数据库更改
     db.session.commit()
     
@@ -270,6 +305,7 @@ def get_student_hours_history(id):
     """
     获取学生的课时历史记录
     """
+    from models import User
     # 检查学生是否存在
     student = Student.query.get(id)
     if not student:
@@ -287,6 +323,10 @@ def get_student_hours_history(id):
         course = Course.query.get(record.course_id)
         course_name = course.name if course else '未知课程'
         
+        # 获取操作人名称
+        operator = User.query.get(record.operator_id)
+        operator_name = operator.name if operator else '未知操作人'
+        
         result.append({
             'id': record.id,
             'student_id': record.student_id,
@@ -294,6 +334,7 @@ def get_student_hours_history(id):
             'course_name': course_name,
             'hours_added': float(record.hours_added),
             'operator_id': record.operator_id,
+            'operator_name': operator_name,
             'remark': record.remark,
             'created_at': record.created_at.isoformat() if record.created_at else None
         })
