@@ -188,9 +188,7 @@ const fetchAttendanceList = async () => {
       targetStudents = [searchForm.value.student_id]
     } else if (searchForm.value.class_id) {
       // 如果选择了班级，查询该班级的所有学生
-      // 这里简化处理，实际应该根据班级ID从后端获取学生列表
-      // 由于当前没有班级学生关联的API，暂时查询所有学生
-      targetStudents = students.value.map(s => s.id)
+      targetStudents = classStudents.value.map(s => s.id)
     } else {
       // 否则查询所有学生
       const studentsResponse = await getStudents({ page: 1, per_page: 100 })
