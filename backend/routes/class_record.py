@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import ClassRecord, AttendanceRecord, Student, Class, Course, User, StudentCourse, LeaveRecord
 from extensions import db
 from datetime import date, time, datetime
+from decimal import Decimal
 from utils import parse_date
 from permissions import can_manage_any_teacher, can_manage_class
 from leave_sync import sync_leave_on_record_creation
@@ -359,7 +360,7 @@ def create_makeup_record():
         logger.error(f'[补课记录] 学生ID={student_id} 没有课程ID={course_id} 的课时')
         return jsonify({'message': '学生没有该课程的课时，请先为学生添加课时'}), 400
     
-    if student_course.remaining_hours < hours:
+    if student_course.remaining_hours < Decimal(str(hours)):
         logger.error(f'[补课记录] 学生ID={student_id} 课时不足，剩余 {student_course.remaining_hours}，需要 {hours}')
         return jsonify({'message': f'学生课时不足，剩余 {student_course.remaining_hours} 课时，需要 {hours} 课时'}), 400
     
@@ -403,7 +404,7 @@ def create_makeup_record():
     db.session.add(new_attendance)
     
     # 扣除学生课时
-    student_course.remaining_hours -= hours
+    student_course.remaining_hours -= Decimal(str(hours))
     logger.info(f'[补课记录] 扣除学生ID={student_id} 课时 {hours}，剩余 {student_course.remaining_hours}')
     
     db.session.commit()
