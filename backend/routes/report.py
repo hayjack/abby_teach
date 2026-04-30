@@ -200,6 +200,8 @@ def get_student_hours():
     # 查询参数
     student_name = request.args.get('student_name')
     course_id = request.args.get('course_id')
+    student_id = request.args.get('student_id')
+    class_id = request.args.get('class_id')
     
     query = db.session.query(
         Student.id,
@@ -215,6 +217,10 @@ def get_student_hours():
         Course, StudentCourse.course_id == Course.id
     )
     
+    # 应用学生ID过滤条件
+    if student_id:
+        query = query.filter(Student.id == student_id)
+    
     # 应用学生姓名过滤条件
     if student_name:
         query = query.filter(Student.name.ilike(f'%{student_name}%'))
@@ -222,6 +228,15 @@ def get_student_hours():
     # 应用课程ID过滤条件
     if course_id:
         query = query.filter(Course.id == course_id)
+    
+    # 应用班级ID过滤条件
+    if class_id:
+        from models import ClassStudent
+        # 获取该班级的所有学生ID
+        class_students = ClassStudent.query.filter(ClassStudent.class_id == class_id).all()
+        student_ids = [cs.student_id for cs in class_students]
+        if student_ids:
+            query = query.filter(Student.id.in_(student_ids))
     
     # 获取分页数据
     pagination = query.paginate(

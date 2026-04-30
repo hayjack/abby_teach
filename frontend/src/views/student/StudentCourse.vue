@@ -194,7 +194,8 @@ const handleCurrentChange = (current) => {
 
 const fetchStudents = async () => {
   try {
-    const response = await api.get('/students')
+    // 获取所有学生，设置较大的每页数量
+    const response = await api.get('/students', { params: { page: 1, per_page: 1000 } })
     students.value = response.data.items || []
   } catch (error) {
     console.error(error)

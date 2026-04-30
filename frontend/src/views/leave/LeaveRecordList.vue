@@ -86,9 +86,14 @@
 
     <el-dialog v-model="dialogVisible" title="新增请假申请" width="500px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+        <el-form-item label="班级">
+          <el-select v-model="dialogClassId" placeholder="请选择班级" clearable filterable @change="handleDialogClassChange">
+            <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="学生" prop="student_id">
           <el-select v-model="form.student_id" placeholder="请选择学生" filterable>
-            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
+            <el-option v-for="s in dialogStudents" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="课程" prop="course_id">
@@ -138,6 +143,10 @@ const pageSize = ref(10)
 const total = ref(0)
 const filters = ref({ class_id: '', student_id: '' })
 const dateRange = ref([])
+
+// 对话框相关变量
+const dialogClassId = ref('')
+const dialogStudents = ref([])
 
 const form = ref({
   student_id: '',
@@ -212,7 +221,8 @@ const fetchLeaves = async () => {
 
 const fetchStudents = async () => {
   try {
-    const response = await api.get('/students')
+    // 获取所有学生，设置较大的每页数量
+    const response = await api.get('/students', { params: { page: 1, per_page: 1000 } })
     students.value = response.data.items || []
   } catch (error) {
     console.error(error)
@@ -230,7 +240,25 @@ const fetchCourses = async () => {
 
 const handleAdd = () => {
   form.value = { student_id: '', course_id: '', start_date: '', end_date: '', reason: '' }
+  dialogClassId.value = ''
+  dialogStudents.value = students.value
   dialogVisible.value = true
+}
+
+// 对话框中班级变化处理
+const handleDialogClassChange = async () => {
+  form.value.student_id = ''
+  if (dialogClassId.value) {
+    try {
+      const response = await api.get(`/classes/${dialogClassId.value}/students`)
+      dialogStudents.value = response.data || []
+    } catch (error) {
+      console.error('获取班级学生失败:', error)
+      dialogStudents.value = []
+    }
+  } else {
+    dialogStudents.value = students.value
+  }
 }
 
 const handleSubmit = async () => {

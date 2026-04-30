@@ -2,7 +2,7 @@
   <div class="student-report">
     <el-row :gutter="20" style="margin-bottom: 20px;">
       <el-col :span="5">
-        <el-select v-model="filters.class_id" placeholder="筛选班级" clearable filterable style="width: 100%;">
+        <el-select v-model="filters.class_id" placeholder="筛选班级" clearable filterable style="width: 100%;" @change="handleClassChange">
           <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id"></el-option>
         </el-select>
       </el-col>
@@ -117,6 +117,7 @@ const hoursData = ref([])
 const attendanceDetail = ref([])
 const currentAttendanceDetail = ref([])
 const students = ref([])
+const allStudents = ref([])
 const classes = ref([])
 const loading = ref(false)
 const filters = ref({ class_id: '', student_id: '' })
@@ -144,7 +145,7 @@ const fetchData = async () => {
       api.get('/reports/student-hours', { params })
     ])
     stats.value = res1.data
-    hoursData.value = res2.data
+    hoursData.value = res2.data.items || res2.data
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '获取统计数据失败')
   } finally {
@@ -187,8 +188,29 @@ const showAttendanceDetail = async (studentId, courseId, studentName, courseName
 const fetchStudents = async () => {
   try {
     const response = await api.get('/students')
-    students.value = response.data.items || []
+    allStudents.value = response.data.items || []
+    students.value = allStudents.value
   } catch (error) { console.error(error) }
+}
+
+const handleClassChange = async () => {
+  // 重置学生选择
+  filters.value.student_id = ''
+  
+  if (!filters.value.class_id) {
+    // 如果没有选择班级，显示所有学生
+    students.value = allStudents.value
+    return
+  }
+  
+  try {
+    // 获取该班级的学生列表
+    const response = await api.get(`/classes/${filters.value.class_id}/students`)
+    students.value = response.data || []
+  } catch (error) {
+    console.error(error)
+    students.value = []
+  }
 }
 
 const renderDetailChart = () => {

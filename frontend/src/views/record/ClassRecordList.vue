@@ -162,9 +162,14 @@
 
     <el-dialog v-model="makeupDialogVisible" title="录入补课记录" width="600px">
       <el-form :model="makeupForm" :rules="makeupRules" ref="makeupFormRef" label-width="100px">
+        <el-form-item label="班级">
+          <el-select v-model="makeupClassId" placeholder="请选择班级" clearable filterable @change="handleMakeupClassChange">
+            <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="学生" prop="student_id">
           <el-select v-model="makeupForm.student_id" placeholder="请选择学生" filterable>
-            <el-option v-for="s in students" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
+            <el-option v-for="s in makeupStudents" :key="s.id" :label="`${s.name} (${s.english_name})`" :value="s.id"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="课程" prop="course_id">
@@ -225,6 +230,10 @@ const makeupFormRef = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+
+// 补课对话框相关变量
+const makeupClassId = ref('')
+const makeupStudents = ref([])
 
 // 搜索表单
 const searchForm = ref({
@@ -327,7 +336,8 @@ const fetchClasses = async () => {
 
 const fetchStudents = async () => {
   try {
-    const response = await api.get('/students')
+    // 获取所有学生，设置较大的每页数量
+    const response = await api.get('/students', { params: { page: 1, per_page: 1000 } })
     students.value = response.data.items || []
   } catch (error) {
     console.error(error)
@@ -365,7 +375,25 @@ const handleAdd = () => {
 
 const handleAddMakeup = () => {
   makeupForm.value = { student_id: '', course_id: '', class_date: '', start_time: '', end_time: '', hours: 1, content: '' }
+  makeupClassId.value = ''
+  makeupStudents.value = students.value
   makeupDialogVisible.value = true
+}
+
+// 补课对话框中班级变化处理
+const handleMakeupClassChange = async () => {
+  makeupForm.value.student_id = ''
+  if (makeupClassId.value) {
+    try {
+      const response = await api.get(`/classes/${makeupClassId.value}/students`)
+      makeupStudents.value = response.data || []
+    } catch (error) {
+      console.error('获取班级学生失败:', error)
+      makeupStudents.value = []
+    }
+  } else {
+    makeupStudents.value = students.value
+  }
 }
 
 const handleMakeupSubmit = async () => {
